@@ -299,6 +299,14 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
             <span>KES {childrenSubtotal.toLocaleString()}</span>
           </div>
         )}
+        {surchargeSubtotal > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              Pod 2 surcharge ({rooms} room{rooms !== 1 && "s"} × {nights} night{nights !== 1 && "s"} @ KES {POD_2_ROOM_SURCHARGE_KES.toLocaleString()})
+            </span>
+            <span>KES {surchargeSubtotal.toLocaleString()}</span>
+          </div>
+        )}
         {nights > 1 && pod?.slug?.startsWith("glamping-pod") && (
           <div className="text-xs text-ember">Multi-night rate applied (saved KES {Math.round((SINGLE_NIGHT_RATE_KES - MULTI_NIGHT_RATE_KES) * nights * (adults + childrenCount * 0.5)).toLocaleString()})</div>
         )}
