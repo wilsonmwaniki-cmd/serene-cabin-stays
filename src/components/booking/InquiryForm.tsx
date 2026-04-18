@@ -78,15 +78,21 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
-  const baseSubtotal = pod ? pod.price_kes * nights * rooms : 0;
+  const nightlyRate = effectiveNightlyRate(pod, nights);
+  const baseSubtotal = nightlyRate * nights * rooms;
   const enoughUnits = availability ? availability.available >= rooms : false;
+
+  const visibleAddons = useMemo(
+    () => addons.filter((a) => !(nights === 1 && SINGLE_NIGHT_EXCLUDED_ADDONS.has(a.slug))),
+    [addons, nights],
+  );
 
   const addonsTotal = useMemo(
     () =>
-      addons
+      visibleAddons
         .filter((a) => selectedAddons[a.id])
         .reduce((sum, a) => sum + calcAddonTotal(a, nights, rooms, adults), 0),
-    [addons, selectedAddons, nights, rooms, adults],
+    [visibleAddons, selectedAddons, nights, rooms, adults],
   );
   const grandTotal = baseSubtotal + addonsTotal;
 
