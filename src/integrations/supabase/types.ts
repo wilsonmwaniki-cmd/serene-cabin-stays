@@ -199,6 +199,7 @@ export type Database = {
           price_kes: number
           size_sqft: number | null
           slug: string
+          surcharge_kes: number
           total_units: number
         }
         Insert: {
@@ -213,6 +214,7 @@ export type Database = {
           price_kes: number
           size_sqft?: number | null
           slug: string
+          surcharge_kes?: number
           total_units?: number
         }
         Update: {
@@ -227,6 +229,7 @@ export type Database = {
           price_kes?: number
           size_sqft?: number | null
           slug?: string
+          surcharge_kes?: number
           total_units?: number
         }
         Relationships: []

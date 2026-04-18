@@ -7,6 +7,7 @@ export type Pod = {
   name: string;
   description: string;
   price_kes: number;
+  surcharge_kes: number;
   capacity: number;
   size_sqft: number | null;
   amenities: string[];

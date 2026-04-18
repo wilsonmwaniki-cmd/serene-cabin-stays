@@ -34,7 +34,7 @@ const BookPod = () => {
     );
   }
 
-  const surcharge = pod.slug === "glamping-pod-2" ? 500 : 0;
+  const surcharge = pod.surcharge_kes ?? 0;
 
   return (
     <>
