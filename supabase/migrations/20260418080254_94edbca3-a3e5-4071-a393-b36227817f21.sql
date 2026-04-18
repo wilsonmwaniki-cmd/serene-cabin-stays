@@ -1,0 +1,1 @@
+DELETE FROM public.pod_images WHERE storage_path LIKE 'test/%';
