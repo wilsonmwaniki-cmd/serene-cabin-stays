@@ -79,7 +79,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
   const nightlyRate = effectiveNightlyRate(pod, nights);
-  const baseSubtotal = nightlyRate * nights * rooms;
+  // Per-person pricing: adults at full rate, children (≤12 years) at half rate.
+  const adultsSubtotal = nightlyRate * adults * nights;
+  const childrenSubtotal = nightlyRate * 0.5 * childrenCount * nights;
+  const baseSubtotal = adultsSubtotal + childrenSubtotal;
   const enoughUnits = availability ? availability.available >= rooms : false;
 
   const visibleAddons = useMemo(
@@ -276,12 +279,20 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       <div className="border border-border bg-linen/40 px-4 py-4 space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">
-            Base ({nights} night{nights !== 1 && "s"} × {rooms} room{rooms !== 1 && "s"} @ KES {nightlyRate.toLocaleString()})
+            Adults ({adults} × {nights} night{nights !== 1 && "s"} @ KES {nightlyRate.toLocaleString()})
           </span>
-          <span>KES {baseSubtotal.toLocaleString()}</span>
+          <span>KES {adultsSubtotal.toLocaleString()}</span>
         </div>
+        {childrenCount > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              Children ≤12 ({childrenCount} × {nights} night{nights !== 1 && "s"} @ KES {(nightlyRate * 0.5).toLocaleString()} — half price)
+            </span>
+            <span>KES {childrenSubtotal.toLocaleString()}</span>
+          </div>
+        )}
         {nights > 1 && pod?.slug?.startsWith("glamping-pod") && (
-          <div className="text-xs text-ember">Multi-night rate applied (saved KES {((SINGLE_NIGHT_RATE_KES - MULTI_NIGHT_RATE_KES) * nights * rooms).toLocaleString()})</div>
+          <div className="text-xs text-ember">Multi-night rate applied (saved KES {Math.round((SINGLE_NIGHT_RATE_KES - MULTI_NIGHT_RATE_KES) * nights * (adults + childrenCount * 0.5)).toLocaleString()})</div>
         )}
         {addonsTotal > 0 && (
           <div className="flex justify-between">
