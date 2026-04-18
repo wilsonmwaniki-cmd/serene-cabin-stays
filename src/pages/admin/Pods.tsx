@@ -14,6 +14,7 @@ const PodEditor = ({ pod }: { pod: Pod }) => {
     name: pod.name,
     description: pod.description,
     price_kes: pod.price_kes,
+    surcharge_kes: pod.surcharge_kes ?? 0,
     capacity: pod.capacity,
     size_sqft: pod.size_sqft ?? 0,
     total_units: pod.total_units,
@@ -27,6 +28,7 @@ const PodEditor = ({ pod }: { pod: Pod }) => {
       name: draft.name,
       description: draft.description,
       price_kes: Number(draft.price_kes),
+      surcharge_kes: Number(draft.surcharge_kes) || 0,
       capacity: Number(draft.capacity),
       size_sqft: Number(draft.size_sqft) || null,
       total_units: Number(draft.total_units),
@@ -49,8 +51,13 @@ const PodEditor = ({ pod }: { pod: Pod }) => {
           <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </div>
         <div>
-          <Label>Price (KES / night)</Label>
+          <Label>Base price (KES / night, per person)</Label>
           <Input type="number" value={draft.price_kes} onChange={(e) => setDraft({ ...draft, price_kes: Number(e.target.value) })} />
+        </div>
+        <div>
+          <Label>Surcharge (KES / night, per room)</Label>
+          <Input type="number" value={draft.surcharge_kes} onChange={(e) => setDraft({ ...draft, surcharge_kes: Number(e.target.value) })} />
+          <p className="text-xs text-muted-foreground mt-1">Flat add-on per room per night. Use 0 for no surcharge.</p>
         </div>
         <div>
           <Label>Capacity</Label>
