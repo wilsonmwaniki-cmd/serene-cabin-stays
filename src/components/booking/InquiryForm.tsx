@@ -178,11 +178,33 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         <Field label="Rooms">
           <input type="number" min={1} max={5} value={rooms} onChange={(e) => setRooms(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
         </Field>
-        <Field label="Check In">
-          <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="w-full bg-transparent font-display text-lg outline-none" />
+        <Field label="Check In (dd/mm/yyyy)">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="dd/mm/yyyy"
+            value={checkIn ? format(new Date(checkIn), "dd/MM/yyyy") : ""}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+              if (m) setCheckIn(`${m[3]}-${m[2]}-${m[1]}`);
+            }}
+            className="w-full bg-transparent font-display text-lg outline-none"
+          />
         </Field>
-        <Field label="Check Out">
-          <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="w-full bg-transparent font-display text-lg outline-none" />
+        <Field label="Check Out (dd/mm/yyyy)">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="dd/mm/yyyy"
+            value={checkOut ? format(new Date(checkOut), "dd/MM/yyyy") : ""}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+              if (m) setCheckOut(`${m[3]}-${m[2]}-${m[1]}`);
+            }}
+            className="w-full bg-transparent font-display text-lg outline-none"
+          />
         </Field>
         <Field label="Adults">
           <input type="number" min={1} max={10} value={adults} onChange={(e) => setAdults(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
