@@ -9,10 +9,26 @@ import { useAddons, calcAddonTotal, pricingUnitLabel } from "@/hooks/useAddons";
 
 interface Pod {
   id: string;
+  slug: string;
   name: string;
   price_kes: number;
   capacity: number;
 }
+
+// Pricing rule: 1-night stays are charged at a higher B&B rate; 2+ nights get a discounted rate.
+const SINGLE_NIGHT_RATE_KES = 5000;
+const MULTI_NIGHT_RATE_KES = 4250;
+// Add-ons not offered for single-night stays.
+const SINGLE_NIGHT_EXCLUDED_ADDONS = new Set(["full-meals"]);
+
+const effectiveNightlyRate = (pod: Pod | undefined, nights: number) => {
+  if (!pod) return 0;
+  // Apply tiered B&B pricing to the glamping pods.
+  if (pod.slug?.startsWith("glamping-pod")) {
+    return nights === 1 ? SINGLE_NIGHT_RATE_KES : MULTI_NIGHT_RATE_KES;
+  }
+  return pod.price_kes;
+};
 
 const schema = z.object({
   guest_name: z.string().trim().min(2, "Please share your name").max(120),
@@ -62,15 +78,21 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
-  const baseSubtotal = pod ? pod.price_kes * nights * rooms : 0;
+  const nightlyRate = effectiveNightlyRate(pod, nights);
+  const baseSubtotal = nightlyRate * nights * rooms;
   const enoughUnits = availability ? availability.available >= rooms : false;
+
+  const visibleAddons = useMemo(
+    () => addons.filter((a) => !(nights === 1 && SINGLE_NIGHT_EXCLUDED_ADDONS.has(a.slug))),
+    [addons, nights],
+  );
 
   const addonsTotal = useMemo(
     () =>
-      addons
+      visibleAddons
         .filter((a) => selectedAddons[a.id])
         .reduce((sum, a) => sum + calcAddonTotal(a, nights, rooms, adults), 0),
-    [addons, selectedAddons, nights, rooms, adults],
+    [visibleAddons, selectedAddons, nights, rooms, adults],
   );
   const grandTotal = baseSubtotal + addonsTotal;
 
@@ -109,7 +131,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       return;
     }
 
-    const chosen = addons.filter((a) => selectedAddons[a.id]);
+    const chosen = visibleAddons.filter((a) => selectedAddons[a.id]);
     if (chosen.length > 0) {
       const { error: addonErr } = await supabase.from("booking_addons").insert(
         chosen.map((a) => ({
@@ -185,14 +207,18 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       </div>
 
       {/* Add-ons */}
-      {addons.length > 0 && (
+      {visibleAddons.length > 0 && (
         <div className="border border-border bg-bone">
           <div className="px-4 py-3 border-b border-border">
             <h4 className="font-display text-lg text-sage-deep">Extra Services</h4>
-            <p className="text-xs text-muted-foreground mt-0.5">Optional add-ons to enhance your stay.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {nights === 1
+                ? "Bed & breakfast is included for single-night stays. Full meals available on stays of 2+ nights."
+                : "Optional add-ons to enhance your stay."}
+            </p>
           </div>
           <ul className="divide-y divide-border">
-            {addons.map((a) => {
+            {visibleAddons.map((a) => {
               const checked = !!selectedAddons[a.id];
               const lineTotal = calcAddonTotal(a, Math.max(nights, 1), rooms, adults);
               return (
@@ -227,9 +253,14 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       {/* Cost summary */}
       <div className="border border-border bg-linen/40 px-4 py-4 space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Base ({nights} night{nights !== 1 && "s"} × {rooms} room{rooms !== 1 && "s"})</span>
+          <span className="text-muted-foreground">
+            Base ({nights} night{nights !== 1 && "s"} × {rooms} room{rooms !== 1 && "s"} @ KES {nightlyRate.toLocaleString()})
+          </span>
           <span>KES {baseSubtotal.toLocaleString()}</span>
         </div>
+        {nights > 1 && pod?.slug?.startsWith("glamping-pod") && (
+          <div className="text-xs text-ember">Multi-night rate applied (saved KES {((SINGLE_NIGHT_RATE_KES - MULTI_NIGHT_RATE_KES) * nights * rooms).toLocaleString()})</div>
+        )}
         {addonsTotal > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Add-ons</span>
