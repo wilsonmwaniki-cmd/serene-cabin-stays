@@ -1,7 +1,7 @@
 import { usePods } from "@/hooks/usePods";
 import pod1 from "@/assets/pod-1.jpg";
 import pod2 from "@/assets/pod-2.jpg";
-import interior from "@/assets/pod-interior.jpg";
+import interior from "@/assets/pod-interior-v2.jpg";
 import { InquiryForm } from "@/components/booking/InquiryForm";
 import { PodGallery } from "@/components/pods/PodGallery";
 import { Maximize2, Users } from "lucide-react";
