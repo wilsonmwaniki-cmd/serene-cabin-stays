@@ -79,7 +79,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
   const nightlyRate = effectiveNightlyRate(pod, nights);
-  const baseSubtotal = nightlyRate * nights * rooms;
+  // Per-person pricing: adults at full rate, children (≤12 years) at half rate.
+  const adultsSubtotal = nightlyRate * adults * nights;
+  const childrenSubtotal = nightlyRate * 0.5 * childrenCount * nights;
+  const baseSubtotal = adultsSubtotal + childrenSubtotal;
   const enoughUnits = availability ? availability.available >= rooms : false;
 
   const visibleAddons = useMemo(
