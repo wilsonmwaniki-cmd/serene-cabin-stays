@@ -9,10 +9,26 @@ import { useAddons, calcAddonTotal, pricingUnitLabel } from "@/hooks/useAddons";
 
 interface Pod {
   id: string;
+  slug: string;
   name: string;
   price_kes: number;
   capacity: number;
 }
+
+// Pricing rule: 1-night stays are charged at a higher B&B rate; 2+ nights get a discounted rate.
+const SINGLE_NIGHT_RATE_KES = 5000;
+const MULTI_NIGHT_RATE_KES = 4250;
+// Add-ons not offered for single-night stays.
+const SINGLE_NIGHT_EXCLUDED_ADDONS = new Set(["full-meals"]);
+
+const effectiveNightlyRate = (pod: Pod | undefined, nights: number) => {
+  if (!pod) return 0;
+  // Apply tiered B&B pricing to the glamping pods.
+  if (pod.slug?.startsWith("glamping-pod")) {
+    return nights === 1 ? SINGLE_NIGHT_RATE_KES : MULTI_NIGHT_RATE_KES;
+  }
+  return pod.price_kes;
+};
 
 const schema = z.object({
   guest_name: z.string().trim().min(2, "Please share your name").max(120),
