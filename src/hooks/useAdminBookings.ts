@@ -41,9 +41,8 @@ export const useAdminBookings = () =>
         : { data: [] };
 
       const addonMap = new Map<string, AdminBooking["addons"]>();
-      for (const row of ba ?? []) {
+      for (const row of (ba ?? []) as Array<{ booking_id: string; quantity: number; unit_price_kes: number; pricing_unit: string; addons: { name: string } | null }>) {
         const list = addonMap.get(row.booking_id) ?? [];
-        // @ts-expect-error nested
         list.push({ name: row.addons?.name ?? "Add-on", quantity: row.quantity, unit_price_kes: row.unit_price_kes, pricing_unit: row.pricing_unit });
         addonMap.set(row.booking_id, list);
       }

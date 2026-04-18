@@ -114,7 +114,7 @@ const AdminBookings = () => {
                   {b.addons.map((a, i) => (
                     <li key={i} className="flex justify-between">
                       <span>{a.name} × {a.quantity}</span>
-                      <span className="text-muted-foreground">KES {a.unit_price_kes.toLocaleString()} {a.pricing_unit.replaceAll("_", " ")}</span>
+                      <span className="text-muted-foreground">KES {a.unit_price_kes.toLocaleString()} {a.pricing_unit.split("_").join(" ")}</span>
                     </li>
                   ))}
                 </ul>
