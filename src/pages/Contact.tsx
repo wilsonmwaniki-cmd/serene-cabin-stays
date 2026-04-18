@@ -1,4 +1,5 @@
 import { InquiryForm } from "@/components/booking/InquiryForm";
+import { ContactMessageForm } from "@/components/contact/ContactMessageForm";
 import { usePods } from "@/hooks/usePods";
 import { useSiteContent, sc } from "@/hooks/useSiteContent";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
@@ -35,10 +36,17 @@ const Contact = () => {
           </div>
         </aside>
 
-        <div id="booking" className="lg:col-span-8 bg-linen/50 p-8 md:p-12">
-          <h2 className="font-display text-3xl md:text-4xl text-sage-deep mb-2">Request your stay</h2>
-          <p className="text-muted-foreground mb-8">We confirm personally — usually within a few hours.</p>
-          {pods.length > 0 && <InquiryForm pods={pods} />}
+        <div className="lg:col-span-8 space-y-12">
+          <div id="booking" className="bg-linen/50 p-8 md:p-12">
+            <h2 className="font-display text-3xl md:text-4xl text-sage-deep mb-2">Request your stay</h2>
+            <p className="text-muted-foreground mb-8">We confirm personally — usually within a few hours.</p>
+            {pods.length > 0 && <InquiryForm pods={pods} />}
+          </div>
+          <div id="message" className="bg-linen/50 p-8 md:p-12">
+            <h2 className="font-display text-3xl md:text-4xl text-sage-deep mb-2">Just have a question?</h2>
+            <p className="text-muted-foreground mb-8">Send us a message and we'll reply from the admin inbox.</p>
+            <ContactMessageForm />
+          </div>
         </div>
       </section>
     </>

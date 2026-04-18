@@ -151,6 +151,39 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          phone: string | null
+          status: Database["public"]["Enums"]["message_status"]
+          subject: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["message_status"]
+          subject?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["message_status"]
+          subject?: string | null
+        }
+        Relationships: []
+      }
       pod_images: {
         Row: {
           alt: string | null
@@ -304,6 +337,7 @@ export type Database = {
       addon_pricing_unit: "per_night" | "per_night_per_adult" | "one_time"
       app_role: "admin" | "moderator" | "user"
       booking_status: "pending" | "confirmed" | "cancelled"
+      message_status: "new" | "read" | "replied" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -434,6 +468,7 @@ export const Constants = {
       addon_pricing_unit: ["per_night", "per_night_per_adult", "one_time"],
       app_role: ["admin", "moderator", "user"],
       booking_status: ["pending", "confirmed", "cancelled"],
+      message_status: ["new", "read", "replied", "archived"],
     },
   },
 } as const
