@@ -84,10 +84,13 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
   const nightlyRate = effectiveNightlyRate(pod, nights);
+  const roomSurcharge = podRoomSurcharge(pod);
   // Per-person pricing: adults at full rate, children (≤12 years) at half rate.
   const adultsSubtotal = nightlyRate * adults * nights;
   const childrenSubtotal = nightlyRate * 0.5 * childrenCount * nights;
-  const baseSubtotal = adultsSubtotal + childrenSubtotal;
+  // Pod 2 carries a flat surcharge per room per night.
+  const surchargeSubtotal = roomSurcharge * rooms * nights;
+  const baseSubtotal = adultsSubtotal + childrenSubtotal + surchargeSubtotal;
   const enoughUnits = availability ? availability.available >= rooms : false;
 
   const visibleAddons = useMemo(
