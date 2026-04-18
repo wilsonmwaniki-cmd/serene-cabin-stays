@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { format, differenceInCalendarDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Check, AlertCircle } from "lucide-react";
+import { useAddons, calcAddonTotal, pricingUnitLabel } from "@/hooks/useAddons";
 
 interface Pod {
   id: string;
@@ -41,6 +42,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [selectedAddons, setSelectedAddons] = useState<Record<string, boolean>>({});
+  const { data: addons = [] } = useAddons();
 
   useEffect(() => {
     if (!podId || !checkIn || !checkOut) return;
@@ -59,8 +62,17 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
-  const subtotal = pod ? pod.price_kes * nights * rooms : 0;
+  const baseSubtotal = pod ? pod.price_kes * nights * rooms : 0;
   const enoughUnits = availability ? availability.available >= rooms : false;
+
+  const addonsTotal = useMemo(
+    () =>
+      addons
+        .filter((a) => selectedAddons[a.id])
+        .reduce((sum, a) => sum + calcAddonTotal(a, nights, rooms, adults), 0),
+    [addons, selectedAddons, nights, rooms, adults],
+  );
+  const grandTotal = baseSubtotal + addonsTotal;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,23 +87,46 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("bookings").insert({
-      pod_id: pod.id,
-      guest_name: name.trim(),
-      guest_email: email.trim(),
-      guest_phone: phone.trim() || null,
-      check_in: checkIn,
-      check_out: checkOut,
-      adults,
-      children: childrenCount,
-      rooms,
-      notes: notes.trim() || null,
-    });
-    setSubmitting(false);
-    if (error) {
-      toast({ title: "Could not submit", description: error.message, variant: "destructive" });
+    const { data: bookingRow, error } = await supabase
+      .from("bookings")
+      .insert({
+        pod_id: pod.id,
+        guest_name: name.trim(),
+        guest_email: email.trim(),
+        guest_phone: phone.trim() || null,
+        check_in: checkIn,
+        check_out: checkOut,
+        adults,
+        children: childrenCount,
+        rooms,
+        notes: notes.trim() || null,
+      })
+      .select("id")
+      .single();
+    if (error || !bookingRow) {
+      setSubmitting(false);
+      toast({ title: "Could not submit", description: error?.message ?? "Please try again.", variant: "destructive" });
       return;
     }
+
+    const chosen = addons.filter((a) => selectedAddons[a.id]);
+    if (chosen.length > 0) {
+      const { error: addonErr } = await supabase.from("booking_addons").insert(
+        chosen.map((a) => ({
+          booking_id: bookingRow.id,
+          addon_id: a.id,
+          quantity: 1,
+          unit_price_kes: a.price_kes,
+          pricing_unit: a.pricing_unit,
+        })),
+      );
+      if (addonErr) {
+        // Inquiry is recorded; just warn.
+        console.warn("Failed to attach add-ons:", addonErr.message);
+      }
+    }
+
+    setSubmitting(false);
     setDone(true);
     toast({ title: "Inquiry received", description: "We'll be in touch within a few hours." });
   };
@@ -140,13 +175,71 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <><Loader2 className="animate-spin" size={16} /> Checking availability…</>
         ) : availability ? (
           enoughUnits ? (
-            <><Check size={16} className="text-sage-deep" /> {availability.available} of {availability.total} units available — {nights} night{nights !== 1 && "s"} · Subtotal <strong>KES {subtotal.toLocaleString()}</strong></>
+            <><Check size={16} className="text-sage-deep" /> {availability.available} of {availability.total} units available — {nights} night{nights !== 1 && "s"}</>
           ) : (
             <><AlertCircle size={16} className="text-destructive" /> Only {availability.available} unit{availability.available !== 1 && "s"} available for these dates.</>
           )
         ) : (
           <span className="text-muted-foreground">Choose your dates to see availability.</span>
         )}
+      </div>
+
+      {/* Add-ons */}
+      {addons.length > 0 && (
+        <div className="border border-border bg-bone">
+          <div className="px-4 py-3 border-b border-border">
+            <h4 className="font-display text-lg text-sage-deep">Extra Services</h4>
+            <p className="text-xs text-muted-foreground mt-0.5">Optional add-ons to enhance your stay.</p>
+          </div>
+          <ul className="divide-y divide-border">
+            {addons.map((a) => {
+              const checked = !!selectedAddons[a.id];
+              const lineTotal = calcAddonTotal(a, Math.max(nights, 1), rooms, adults);
+              return (
+                <li key={a.id}>
+                  <label className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-linen/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => setSelectedAddons((s) => ({ ...s, [a.id]: e.target.checked }))}
+                      className="w-4 h-4 accent-sage-deep"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-foreground">{a.name}</div>
+                      {a.description && (
+                        <div className="text-xs text-muted-foreground">{a.description}</div>
+                      )}
+                    </div>
+                    <div className="text-right text-sm">
+                      <div className="text-foreground">KES {a.price_kes.toLocaleString()} <span className="text-muted-foreground text-xs">{pricingUnitLabel(a.pricing_unit)}</span></div>
+                      {checked && nights > 0 && (
+                        <div className="text-xs text-ember">+ KES {lineTotal.toLocaleString()}</div>
+                      )}
+                    </div>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Cost summary */}
+      <div className="border border-border bg-linen/40 px-4 py-4 space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Base ({nights} night{nights !== 1 && "s"} × {rooms} room{rooms !== 1 && "s"})</span>
+          <span>KES {baseSubtotal.toLocaleString()}</span>
+        </div>
+        {addonsTotal > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Add-ons</span>
+            <span>KES {addonsTotal.toLocaleString()}</span>
+          </div>
+        )}
+        <div className="flex justify-between font-display text-lg pt-2 border-t border-border">
+          <span className="text-sage-deep">Total</span>
+          <span className="text-sage-deep">KES {grandTotal.toLocaleString()}</span>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
