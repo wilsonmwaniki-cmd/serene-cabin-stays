@@ -6,6 +6,7 @@ import { BookingBar } from "@/components/booking/BookingBar";
 import { Link } from "react-router-dom";
 import { ArrowRight, Leaf, Mountain, Coffee } from "lucide-react";
 import { usePods } from "@/hooks/usePods";
+import { useSiteContent, sc } from "@/hooks/useSiteContent";
 
 const podImages: Record<string, string> = {
   "glamping-pod-1": pod2,
@@ -14,6 +15,7 @@ const podImages: Record<string, string> = {
 
 const Home = () => {
   const { data: pods = [] } = usePods();
+  const { data: content } = useSiteContent();
 
   return (
     <>
@@ -33,13 +35,13 @@ const Home = () => {
 
         <div className="relative h-full container flex flex-col justify-center pt-24 md:pt-32">
           <p className="reveal text-bone/80 text-xs md:text-sm uppercase tracking-[0.4em] mb-6">
-            Elementaita · Kenya
+            {sc(content, "home.hero.eyebrow", "Elementaita · Kenya")}
           </p>
           <h1 className="reveal reveal-delay-1 font-display text-bone text-[44px] leading-[0.95] sm:text-6xl md:text-7xl lg:text-[88px] max-w-4xl text-balance">
-            Slow. <em className="not-italic font-light">Silent.</em><br />Intentional.
+            {sc(content, "home.hero.title", "Slow. Silent. Intentional.")}
           </h1>
           <p className="reveal reveal-delay-2 mt-6 text-bone/85 text-lg md:text-xl max-w-xl">
-            Where nothing is urgent — boutique glamping pods nestled at the foot of The Sleeping Warrior.
+            {sc(content, "home.hero.subtitle", "Where nothing is urgent — boutique glamping pods nestled at the foot of The Sleeping Warrior.")}
           </p>
         </div>
 

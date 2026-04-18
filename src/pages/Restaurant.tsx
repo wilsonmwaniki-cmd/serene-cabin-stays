@@ -1,5 +1,6 @@
 import restaurantImg from "@/assets/restaurant.jpg";
 import { Link } from "react-router-dom";
+import { useSiteContent, sc } from "@/hooks/useSiteContent";
 
 const dishes = [
   { name: "Slow-roasted lamb", note: "with rosemary potatoes & garden greens" },
@@ -9,6 +10,7 @@ const dishes = [
 ];
 
 const Restaurant = () => {
+  const { data: content } = useSiteContent();
   return (
     <>
       <section className="relative h-[80vh] min-h-[520px]">
@@ -25,15 +27,13 @@ const Restaurant = () => {
       <section className="container py-24 md:py-32 grid md:grid-cols-12 gap-12">
         <div className="md:col-span-5">
           <p className="text-xs uppercase tracking-[0.3em] text-ember mb-4">Open daily</p>
-          <h2 className="font-display text-4xl md:text-5xl text-sage-deep text-balance">A short menu, cooked slowly.</h2>
+          <h2 className="font-display text-4xl md:text-5xl text-sage-deep text-balance">
+            {sc(content, "restaurant.intro.title", "A short menu, cooked slowly.")}
+          </h2>
         </div>
         <div className="md:col-span-6 md:col-start-7 text-foreground/80 text-lg leading-relaxed space-y-4">
-          <p>
-            We change the menu with what the day offers — produce from the kitchen garden, fish from the lake, bread baked on the open fire. Breakfast is included with every stay.
-          </p>
-          <p>
-            Dinner is served by candlelight from 6:30pm. Bookings recommended.
-          </p>
+          <p>{sc(content, "restaurant.intro.body", "We change the menu with what the day offers — produce from the kitchen garden, fish from the lake, bread baked on the open fire. Breakfast is included with every stay.")}</p>
+          <p>Dinner is served by candlelight from 6:30pm. Bookings recommended.</p>
         </div>
       </section>
 

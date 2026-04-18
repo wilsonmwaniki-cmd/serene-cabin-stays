@@ -1,9 +1,11 @@
 import { InquiryForm } from "@/components/booking/InquiryForm";
 import { usePods } from "@/hooks/usePods";
+import { useSiteContent, sc } from "@/hooks/useSiteContent";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 
 const Contact = () => {
   const { data: pods = [] } = usePods();
+  const { data: content } = useSiteContent();
   return (
     <>
       <section className="pt-36 md:pt-44 pb-16 container">
@@ -18,9 +20,9 @@ const Contact = () => {
 
       <section className="container grid lg:grid-cols-12 gap-12 pb-24">
         <aside className="lg:col-span-4 space-y-8">
-          <Info icon={<MapPin />} label="Location" value="Elementaita, Nakuru County, Kenya" />
-          <Info icon={<Phone />} label="Telephone" value={<a href="tel:+254725744695" className="hover:text-ember">+254 725 744 695</a>} />
-          <Info icon={<Mail />} label="Email" value={<a href="mailto:hello@lera.co.ke" className="hover:text-ember">hello@lera.co.ke</a>} />
+          <Info icon={<MapPin />} label="Location" value={sc(content, "contact.address", "Elementaita, Nakuru County, Kenya")} />
+          <Info icon={<Phone />} label="Telephone" value={<a href={`tel:${sc(content, "contact.phone", "+254725744695").replace(/\s/g, "")}`} className="hover:text-ember">{sc(content, "contact.phone", "+254 725 744 695")}</a>} />
+          <Info icon={<Mail />} label="Email" value={<a href={`mailto:${sc(content, "contact.email", "hello@lera.co.ke")}`} className="hover:text-ember">{sc(content, "contact.email", "hello@lera.co.ke")}</a>} />
           <Info icon={<Clock />} label="Reception" value="8am — 9pm daily · Check-in from 3pm" />
 
           <div className="aspect-[4/3] overflow-hidden border border-border">
