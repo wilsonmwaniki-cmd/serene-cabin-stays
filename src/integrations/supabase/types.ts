@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      addons: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          price_kes: number
+          pricing_unit: Database["public"]["Enums"]["addon_pricing_unit"]
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price_kes: number
+          pricing_unit?: Database["public"]["Enums"]["addon_pricing_unit"]
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_kes?: number
+          pricing_unit?: Database["public"]["Enums"]["addon_pricing_unit"]
+          slug?: string
+        }
+        Relationships: []
+      }
+      booking_addons: {
+        Row: {
+          addon_id: string
+          booking_id: string
+          created_at: string
+          id: string
+          pricing_unit: Database["public"]["Enums"]["addon_pricing_unit"]
+          quantity: number
+          unit_price_kes: number
+        }
+        Insert: {
+          addon_id: string
+          booking_id: string
+          created_at?: string
+          id?: string
+          pricing_unit: Database["public"]["Enums"]["addon_pricing_unit"]
+          quantity?: number
+          unit_price_kes: number
+        }
+        Update: {
+          addon_id?: string
+          booking_id?: string
+          created_at?: string
+          id?: string
+          pricing_unit?: Database["public"]["Enums"]["addon_pricing_unit"]
+          quantity?: number
+          unit_price_kes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_addons_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           adults: number
@@ -130,6 +211,7 @@ export type Database = {
       }
     }
     Enums: {
+      addon_pricing_unit: "per_night" | "per_night_per_adult" | "one_time"
       booking_status: "pending" | "confirmed" | "cancelled"
     }
     CompositeTypes: {
@@ -258,6 +340,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      addon_pricing_unit: ["per_night", "per_night_per_adult", "one_time"],
       booking_status: ["pending", "confirmed", "cancelled"],
     },
   },
