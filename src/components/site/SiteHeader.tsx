@@ -38,12 +38,12 @@ export const SiteHeader = () => {
       )}
     >
       <div className="container flex items-center justify-between py-4 md:py-5">
-        <Link to="/" className="flex items-center group relative" aria-label="Wild by LERA — Home">
+        <Link to="/" className="flex items-center group" aria-label="Wild by LERA — Home">
           <img
             src={logo}
             alt="Wild by LERA"
             className={cn(
-              "h-32 md:h-44 lg:h-52 w-auto object-contain -my-10 md:-my-16 transition-[filter] duration-500",
+              "h-20 md:h-24 w-auto object-contain transition-[filter] duration-500",
               transparent ? "brightness-0 invert" : ""
             )}
           />
