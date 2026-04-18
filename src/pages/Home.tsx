@@ -43,18 +43,17 @@ const Home = () => {
           </p>
         </div>
 
-        {/* Floating booking bar */}
-        <div className="absolute -bottom-6 md:-bottom-10 left-0 right-0 z-10">
-          <div className="container">
-            <div className="reveal reveal-delay-3">
-              <BookingBar />
-            </div>
-          </div>
-        </div>
       </section>
 
+      {/* Floating booking bar — overlaps hero/intro */}
+      <div className="relative z-20 container -mt-16 md:-mt-20">
+        <div className="reveal reveal-delay-3">
+          <BookingBar />
+        </div>
+      </div>
+
       {/* INTRO */}
-      <section className="container pt-32 md:pt-40 pb-20 md:pb-28 grid md:grid-cols-12 gap-10 items-start">
+      <section className="container pt-20 md:pt-28 pb-20 md:pb-28 grid md:grid-cols-12 gap-10 items-start">
         <div className="md:col-span-5">
           <p className="text-xs uppercase tracking-[0.3em] text-ember mb-4">A haven in nature</p>
           <h2 className="font-display text-4xl md:text-5xl lg:text-6xl text-sage-deep leading-[1.05] text-balance">
