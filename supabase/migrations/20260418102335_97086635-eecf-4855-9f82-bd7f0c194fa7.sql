@@ -1,0 +1,1 @@
+ALTER TABLE public.pods ADD COLUMN IF NOT EXISTS surcharge_kes integer NOT NULL DEFAULT 0;
