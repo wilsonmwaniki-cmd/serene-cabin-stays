@@ -10,6 +10,8 @@ import Stays from "./pages/Stays";
 import Restaurant from "./pages/Restaurant";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
+import Book from "./pages/Book";
+import BookPod from "./pages/BookPod";
 import Admin from "./pages/Admin";
 import AdminBookings from "./pages/admin/Bookings";
 import AdminPods from "./pages/admin/Pods";
@@ -33,6 +35,8 @@ const App = () => (
             <Route path="/restaurant" element={<Restaurant />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/book" element={<Book />} />
+            <Route path="/book/:slug" element={<BookPod />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Admin />} />

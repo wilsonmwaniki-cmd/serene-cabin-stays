@@ -18,6 +18,8 @@ interface Pod {
 // Pricing rule: 1-night stays are charged at a higher B&B rate; 2+ nights get a discounted rate.
 const SINGLE_NIGHT_RATE_KES = 5000;
 const MULTI_NIGHT_RATE_KES = 4250;
+// Pod 2 is slightly larger and carries a flat per-room-per-night surcharge.
+const POD_2_ROOM_SURCHARGE_KES = 500;
 // Add-ons not offered for single-night stays.
 const SINGLE_NIGHT_EXCLUDED_ADDONS = new Set(["full-meals"]);
 
@@ -29,6 +31,9 @@ const effectiveNightlyRate = (pod: Pod | undefined, nights: number) => {
   }
   return pod.price_kes;
 };
+
+const podRoomSurcharge = (pod: Pod | undefined) =>
+  pod?.slug === "glamping-pod-2" ? POD_2_ROOM_SURCHARGE_KES : 0;
 
 const schema = z.object({
   guest_name: z.string().trim().min(2, "Please share your name").max(120),
@@ -79,10 +84,13 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
   const nightlyRate = effectiveNightlyRate(pod, nights);
+  const roomSurcharge = podRoomSurcharge(pod);
   // Per-person pricing: adults at full rate, children (≤12 years) at half rate.
   const adultsSubtotal = nightlyRate * adults * nights;
   const childrenSubtotal = nightlyRate * 0.5 * childrenCount * nights;
-  const baseSubtotal = adultsSubtotal + childrenSubtotal;
+  // Pod 2 carries a flat surcharge per room per night.
+  const surchargeSubtotal = roomSurcharge * rooms * nights;
+  const baseSubtotal = adultsSubtotal + childrenSubtotal + surchargeSubtotal;
   const enoughUnits = availability ? availability.available >= rooms : false;
 
   const visibleAddons = useMemo(
@@ -289,6 +297,14 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
               Children ≤12 ({childrenCount} × {nights} night{nights !== 1 && "s"} @ KES {(nightlyRate * 0.5).toLocaleString()} — half price)
             </span>
             <span>KES {childrenSubtotal.toLocaleString()}</span>
+          </div>
+        )}
+        {surchargeSubtotal > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              Pod 2 surcharge ({rooms} room{rooms !== 1 && "s"} × {nights} night{nights !== 1 && "s"} @ KES {POD_2_ROOM_SURCHARGE_KES.toLocaleString()})
+            </span>
+            <span>KES {surchargeSubtotal.toLocaleString()}</span>
           </div>
         )}
         {nights > 1 && pod?.slug?.startsWith("glamping-pod") && (

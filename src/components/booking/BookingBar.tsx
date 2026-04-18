@@ -45,7 +45,7 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
       adults: String(adults),
       children: String(children),
     });
-    navigate(`/stays?${params.toString()}#availability`);
+    navigate(`/book?${params.toString()}`);
   };
 
   return (
