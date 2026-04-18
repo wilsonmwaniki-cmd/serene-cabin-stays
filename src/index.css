@@ -1,95 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@300;400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Wild By LERA — Warm & organic minimal design system.
+   All colors HSL. Sage greens, warm beige, ember accents. */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Surfaces — warm bone, not pure white */
+    --background: 38 28% 96%;
+    --foreground: 90 12% 14%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 38 30% 98%;
+    --card-foreground: 90 12% 14%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 38 30% 98%;
+    --popover-foreground: 90 12% 14%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary — deep sage */
+    --primary: 96 14% 28%;
+    --primary-foreground: 38 35% 96%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary — soft sage / linen */
+    --secondary: 75 14% 88%;
+    --secondary-foreground: 96 18% 22%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 38 18% 92%;
+    --muted-foreground: 90 8% 38%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent — warm ember/clay */
+    --accent: 24 38% 56%;
+    --accent-foreground: 38 35% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 8 62% 48%;
+    --destructive-foreground: 38 35% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 38 18% 86%;
+    --input: 38 18% 86%;
+    --ring: 96 14% 28%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
+
+    /* Brand-specific tokens */
+    --sage-deep: 96 18% 22%;
+    --sage: 96 14% 38%;
+    --sage-soft: 90 14% 76%;
+    --bone: 38 28% 96%;
+    --linen: 38 22% 90%;
+    --ember: 24 38% 56%;
+    --ember-deep: 22 42% 42%;
+    --ink: 90 12% 14%;
+
+    /* Gradients */
+    --gradient-warm: linear-gradient(180deg, hsl(38 28% 96%) 0%, hsl(38 22% 92%) 100%);
+    --gradient-overlay: linear-gradient(180deg, hsl(0 0% 0% / 0) 35%, hsl(90 18% 12% / 0.55) 100%);
+    --gradient-sage: linear-gradient(135deg, hsl(96 18% 22%) 0%, hsl(96 14% 32%) 100%);
+
+    /* Shadows — soft, organic */
+    --shadow-soft: 0 1px 2px hsl(90 12% 14% / 0.04), 0 8px 24px hsl(90 12% 14% / 0.06);
+    --shadow-lift: 0 2px 6px hsl(90 12% 14% / 0.06), 0 24px 48px -12px hsl(90 12% 14% / 0.18);
+
+    /* Motion */
+    --ease-organic: cubic-bezier(0.22, 1, 0.36, 1);
+    --transition-base: 400ms var(--ease-organic);
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
@@ -98,8 +81,48 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+  }
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Fraunces', 'Times New Roman', serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    font-variation-settings: "opsz" 144;
+  }
+  ::selection {
+    background: hsl(var(--accent) / 0.3);
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: reveal 900ms var(--ease-organic) forwards;
+  }
+  .reveal-delay-1 { animation-delay: 120ms; }
+  .reveal-delay-2 { animation-delay: 240ms; }
+  .reveal-delay-3 { animation-delay: 360ms; }
+
+  @keyframes reveal {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .ken-burns {
+    animation: ken-burns 22s var(--ease-organic) infinite alternate;
+  }
+  @keyframes ken-burns {
+    from { transform: scale(1.02); }
+    to { transform: scale(1.12); }
   }
 }
