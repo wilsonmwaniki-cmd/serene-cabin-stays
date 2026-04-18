@@ -2,6 +2,7 @@ import { Link, NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo-wildbylera.png";
 
 const links = [
   { to: "/", label: "Home" },
@@ -37,15 +38,15 @@ export const SiteHeader = () => {
       )}
     >
       <div className="container flex items-center justify-between py-4 md:py-5">
-        <Link to="/" className="flex items-baseline gap-2 group">
-          <span
+        <Link to="/" className="flex items-center group" aria-label="Wild by LERA — Home">
+          <img
+            src={logo}
+            alt="Wild by LERA"
             className={cn(
-              "font-display text-2xl md:text-[28px] tracking-tight transition-colors",
-              transparent ? "text-bone" : "text-sage-deep"
+              "h-12 md:h-14 w-auto object-contain transition-[filter] duration-500",
+              transparent ? "brightness-0 invert" : ""
             )}
-          >
-            Wild <span className="italic font-light opacity-80">by</span> LERA
-          </span>
+          />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
