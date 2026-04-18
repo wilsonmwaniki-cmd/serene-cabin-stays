@@ -2,16 +2,20 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useIsAdmin } from "@/hooks/useAuth";
+import { useAdminCounts } from "@/hooks/useAdminCounts";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Calendar, Home, Image as ImageIcon, LogOut, Package, Type } from "lucide-react";
+import { Calendar, Home, Image as ImageIcon, Inbox, LogOut, Package, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
-  { to: "/admin/bookings", label: "Bookings", icon: Calendar },
+type NavItem = { to: string; label: string; icon: typeof Calendar; badgeKey?: "pendingBookings" | "newMessages" };
+
+const items: NavItem[] = [
+  { to: "/admin/bookings", label: "Bookings", icon: Calendar, badgeKey: "pendingBookings" },
+  { to: "/admin/messages", label: "Messages", icon: Inbox, badgeKey: "newMessages" },
   { to: "/admin/pods", label: "Pods", icon: Home },
   { to: "/admin/addons", label: "Add-ons", icon: Package },
   { to: "/admin/content", label: "Site text", icon: Type },
@@ -24,33 +28,44 @@ const navCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-sage-deep/10 text-sage-deep font-medium" : "text-foreground/70 hover:bg-muted/60"
   );
 
-const AdminSidebar = () => (
-  <Sidebar collapsible="icon">
-    <SidebarContent>
-      <div className="px-4 py-5 border-b border-border/60">
-        <p className="font-display text-lg text-sage-deep leading-none">Wild by LERA</p>
-        <p className="text-xs text-muted-foreground mt-1">Admin</p>
-      </div>
-      <SidebarGroup>
-        <SidebarGroupLabel>Manage</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {items.map((it) => (
-              <SidebarMenuItem key={it.to}>
-                <SidebarMenuButton asChild>
-                  <NavLink to={it.to} className={navCls}>
-                    <it.icon size={16} />
-                    <span>{it.label}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    </SidebarContent>
-  </Sidebar>
-);
+const AdminSidebar = () => {
+  const { data: counts } = useAdminCounts();
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarContent>
+        <div className="px-4 py-5 border-b border-border/60">
+          <p className="font-display text-lg text-sage-deep leading-none">Wild by LERA</p>
+          <p className="text-xs text-muted-foreground mt-1">Admin</p>
+        </div>
+        <SidebarGroup>
+          <SidebarGroupLabel>Manage</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((it) => {
+                const count = it.badgeKey ? counts?.[it.badgeKey] ?? 0 : 0;
+                return (
+                  <SidebarMenuItem key={it.to}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={it.to} className={navCls}>
+                        <it.icon size={16} />
+                        <span className="flex-1">{it.label}</span>
+                        {count > 0 && (
+                          <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-medium rounded-full bg-ember text-bone">
+                            {count}
+                          </span>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+};
 
 export const AdminLayout = () => {
   const navigate = useNavigate();

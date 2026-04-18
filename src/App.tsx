@@ -14,6 +14,7 @@ import Book from "./pages/Book";
 import BookPod from "./pages/BookPod";
 import Admin from "./pages/Admin";
 import AdminBookings from "./pages/admin/Bookings";
+import AdminMessages from "./pages/admin/Messages";
 import AdminPods from "./pages/admin/Pods";
 import AdminAddons from "./pages/admin/Addons";
 import AdminContent from "./pages/admin/Content";
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Admin />} />
             <Route path="bookings" element={<AdminBookings />} />
+            <Route path="messages" element={<AdminMessages />} />
             <Route path="pods" element={<AdminPods />} />
             <Route path="addons" element={<AdminAddons />} />
             <Route path="content" element={<AdminContent />} />
