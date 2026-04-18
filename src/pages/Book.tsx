@@ -28,7 +28,7 @@ const Book = () => {
 
       <div className="grid md:grid-cols-2 gap-8 md:gap-10">
         {pods.map((pod) => {
-          const surcharge = pod.slug === "glamping-pod-2" ? 500 : 0;
+          const surcharge = pod.surcharge_kes ?? 0;
           return (
             <Link
               key={pod.id}
