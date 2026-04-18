@@ -29,7 +29,7 @@ export const SiteFooter = () => {
           <ul className="space-y-3 text-sm">
             <li className="flex items-start gap-3"><MapPin size={16} className="mt-0.5 shrink-0" /> Elementaita, Nakuru, Kenya</li>
             <li className="flex items-center gap-3"><Phone size={16} /> <a href="tel:+254725744695" className="hover:text-bone">+254 725 744 695</a></li>
-            <li className="flex items-center gap-3"><Mail size={16} /> <a href="mailto:hello@lera.co.ke" className="hover:text-bone">hello@lera.co.ke</a></li>
+            <li className="flex items-center gap-3"><Mail size={16} /> <a href="mailto:bookings@lera.co.ke" className="hover:text-bone">bookings@lera.co.ke</a></li>
             <li className="flex items-center gap-3"><Instagram size={16} /> <a href="#" className="hover:text-bone">@wildbylera</a></li>
           </ul>
         </div>
