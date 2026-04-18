@@ -43,7 +43,7 @@ export const SiteHeader = () => {
             src={logo}
             alt="Wild by LERA"
             className={cn(
-              "h-12 md:h-14 w-auto object-contain transition-[filter] duration-500",
+              "h-20 md:h-24 w-auto object-contain transition-[filter] duration-500",
               transparent ? "brightness-0 invert" : ""
             )}
           />
