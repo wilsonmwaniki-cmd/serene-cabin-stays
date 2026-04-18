@@ -1,4 +1,4 @@
-import heroImg from "@/assets/hero-cabins.jpg";
+import heroImg from "@/assets/hero-lera.jpg";
 import landscapeImg from "@/assets/landscape.jpg";
 import pod1 from "@/assets/pod-1.jpg";
 import pod2 from "@/assets/pod-2.jpg";
