@@ -46,8 +46,8 @@ const Home = () => {
               );
             })()}
           </h1>
-          <p className="reveal reveal-delay-2 mt-6 text-bone/85 text-lg md:text-xl max-w-xl">
-            {sc(content, "home.hero.subtitle", "Where nothing is urgent — boutique glamping pods nestled at the foot of The Sleeping Warrior.")}
+          <p className="reveal reveal-delay-2 mt-6 text-bone/85 text-lg md:text-xl max-w-xl font-extralight font-serif">
+            {sc(content, "home.hero.subtitle", "WHERE NOTHING IS URGENT.")}
           </p>
         </div>
 
