@@ -295,7 +295,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       >
         {submitting ? "Sending…" : "Request to Book"}
       </button>
-      <p className="text-xs text-muted-foreground text-center">Check-in 3pm · Check-out 11am · Minimum check-in age 18</p>
+      <p className="text-xs text-muted-foreground text-center">Check-in 3pm · Check-out 2pm · Minimum check-in age 18</p>
     </form>
   );
 };
