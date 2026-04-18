@@ -151,6 +151,41 @@ export type Database = {
           },
         ]
       }
+      pod_images: {
+        Row: {
+          alt: string | null
+          created_at: string
+          display_order: number
+          id: string
+          pod_id: string
+          storage_path: string
+        }
+        Insert: {
+          alt?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          pod_id: string
+          storage_path: string
+        }
+        Update: {
+          alt?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          pod_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pod_images_pod_id_fkey"
+            columns: ["pod_id"]
+            isOneToOne: false
+            referencedRelation: "pods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pods: {
         Row: {
           amenities: string[]
@@ -196,11 +231,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       pod_availability: {
         Args: { _check_in: string; _check_out: string; _pod_id: string }
         Returns: {
@@ -212,6 +275,7 @@ export type Database = {
     }
     Enums: {
       addon_pricing_unit: "per_night" | "per_night_per_adult" | "one_time"
+      app_role: "admin" | "moderator" | "user"
       booking_status: "pending" | "confirmed" | "cancelled"
     }
     CompositeTypes: {
@@ -341,6 +405,7 @@ export const Constants = {
   public: {
     Enums: {
       addon_pricing_unit: ["per_night", "per_night_per_adult", "one_time"],
+      app_role: ["admin", "moderator", "user"],
       booking_status: ["pending", "confirmed", "cancelled"],
     },
   },
