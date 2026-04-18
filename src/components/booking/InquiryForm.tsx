@@ -131,7 +131,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       return;
     }
 
-    const chosen = addons.filter((a) => selectedAddons[a.id]);
+    const chosen = visibleAddons.filter((a) => selectedAddons[a.id]);
     if (chosen.length > 0) {
       const { error: addonErr } = await supabase.from("booking_addons").insert(
         chosen.map((a) => ({
