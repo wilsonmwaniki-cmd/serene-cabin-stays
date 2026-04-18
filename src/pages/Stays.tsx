@@ -3,6 +3,7 @@ import pod1 from "@/assets/pod-1.jpg";
 import pod2 from "@/assets/pod-2.jpg";
 import interior from "@/assets/pod-interior.jpg";
 import { InquiryForm } from "@/components/booking/InquiryForm";
+import { PodGallery } from "@/components/pods/PodGallery";
 import { Maximize2, Users } from "lucide-react";
 
 const podImages: Record<string, string> = {
@@ -45,6 +46,9 @@ const Stays = () => {
                   <li key={a} className="flex items-center gap-2 before:content-[''] before:w-1 before:h-1 before:bg-ember before:rounded-full">{a}</li>
                 ))}
               </ul>
+            </div>
+            <div className="md:col-span-12">
+              <PodGallery podId={pod.id} />
             </div>
           </article>
         ))}

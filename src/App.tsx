@@ -8,6 +8,8 @@ import Home from "./pages/Home";
 import Stays from "./pages/Stays";
 import Restaurant from "./pages/Restaurant";
 import Contact from "./pages/Contact";
+import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,8 @@ const App = () => (
             <Route path="/stays" element={<Stays />} />
             <Route path="/restaurant" element={<Restaurant />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<Admin />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
