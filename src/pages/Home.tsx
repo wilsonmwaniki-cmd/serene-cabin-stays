@@ -38,7 +38,13 @@ const Home = () => {
             {sc(content, "home.hero.eyebrow", "Elementaita · Kenya")}
           </p>
           <h1 className="reveal reveal-delay-1 font-display text-bone text-[44px] leading-[0.95] sm:text-6xl md:text-7xl lg:text-[88px] max-w-4xl text-balance">
-            {sc(content, "home.hero.title", "Slow. Silent. Intentional.")}
+            {(() => {
+              const title = sc(content, "home.hero.title", "Wild by LERA");
+              const parts = title.split(/(\bby\b)/i);
+              return parts.map((part, i) =>
+                part.toLowerCase() === "by" ? <em key={i} className="italic font-light">{part}</em> : <span key={i}>{part}</span>
+              );
+            })()}
           </h1>
           <p className="reveal reveal-delay-2 mt-6 text-bone/85 text-lg md:text-xl max-w-xl">
             {sc(content, "home.hero.subtitle", "Where nothing is urgent — boutique glamping pods nestled at the foot of The Sleeping Warrior.")}
