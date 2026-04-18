@@ -129,7 +129,7 @@ const Home = () => {
 
       {/* QUOTE / LANDSCAPE */}
       <section className="relative h-[70vh] min-h-[460px] overflow-hidden">
-        <img src={landscapeImg} alt="Lake Elementaita with The Sleeping Warrior hill at golden hour" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
+        <img src={landscapeImg} alt="Lake Elementaita with The Sleeping Warrior hill at golden hour" className="absolute inset-0 w-full h-full object-cover object-top" loading="lazy" width={1920} height={1080} />
         <div className="absolute inset-0 bg-ink/35" />
         <div className="relative h-full container flex items-center">
           <blockquote className="font-display text-bone text-3xl md:text-5xl lg:text-6xl max-w-3xl leading-[1.1] text-balance">
