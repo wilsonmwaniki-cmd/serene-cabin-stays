@@ -10,6 +10,7 @@ import Stays from "./pages/Stays";
 import Restaurant from "./pages/Restaurant";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Book from "./pages/Book";
 import BookPod from "./pages/BookPod";
 import Admin from "./pages/Admin";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/restaurant" element={<Restaurant />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/book" element={<Book />} />
             <Route path="/book/:slug" element={<BookPod />} />
           </Route>
