@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Book from "./pages/Book";
 import BookPod from "./pages/BookPod";
+import Unsubscribe from "./pages/Unsubscribe";
 import Admin from "./pages/Admin";
 import AdminBookings from "./pages/admin/Bookings";
 import AdminMessages from "./pages/admin/Messages";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/book" element={<Book />} />
             <Route path="/book/:slug" element={<BookPod />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Admin />} />

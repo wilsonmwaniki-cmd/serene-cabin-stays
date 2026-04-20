@@ -29,18 +29,38 @@ export const ContactMessageForm = () => {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("messages").insert({
+    const id = crypto.randomUUID();
+    const payload = {
       name: name.trim(),
       email: email.trim(),
       phone: phone.trim() || null,
       subject: subject.trim() || null,
       message: message.trim(),
-    });
+    };
+    const { error } = await supabase.from("messages").insert({ id, ...payload });
     setSubmitting(false);
     if (error) {
       toast({ title: "Could not send", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Fire-and-forget guest confirmation + admin alert
+    supabase.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "contact-received",
+        recipientEmail: payload.email,
+        idempotencyKey: `contact-received-${id}`,
+        templateData: { name: payload.name, message: payload.message },
+      },
+    }).catch(() => {});
+    supabase.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "contact-admin-alert",
+        idempotencyKey: `contact-admin-${id}`,
+        templateData: payload,
+      },
+    }).catch(() => {});
+
     setDone(true);
     toast({ title: "Message received", description: "We'll get back to you shortly." });
   };
