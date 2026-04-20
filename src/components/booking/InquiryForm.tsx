@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import { useAddons, calcAddonTotal, pricingUnitLabel } from "@/hooks/useAddons";
+import { format as fmtDate } from "date-fns";
 
 interface Pod {
   id: string;
@@ -160,6 +161,38 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     setSubmitting(false);
     setDone(true);
     toast({ title: "Inquiry received", description: "We'll be in touch within a few hours." });
+
+    // Guest confirmation + admin alert (fire-and-forget)
+    const fmt = (d: string) => {
+      try { return fmtDate(new Date(d), "MMM d, yyyy"); } catch { return d; }
+    };
+    const emailData = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+      podName: pod.name,
+      checkIn: fmt(checkIn),
+      checkOut: fmt(checkOut),
+      adults,
+      children: childrenCount,
+      rooms,
+      notes: notes.trim() || undefined,
+    };
+    supabase.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "booking-inquiry-received",
+        recipientEmail: emailData.email,
+        idempotencyKey: `inquiry-received-${bookingRow.id}`,
+        templateData: emailData,
+      },
+    }).catch(() => {});
+    supabase.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "booking-inquiry-admin-alert",
+        idempotencyKey: `inquiry-admin-${bookingRow.id}`,
+        templateData: emailData,
+      },
+    }).catch(() => {});
   };
 
   if (done) {
