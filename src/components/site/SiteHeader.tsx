@@ -31,12 +31,15 @@ export const SiteHeader = () => {
   return (
     <header
       className={cn(
-        "fixed top-0 inset-x-0 z-50 transition-[background-color,backdrop-filter,box-shadow] duration-500",
+        "fixed top-0 inset-x-0 z-50 transition-[background-color,backdrop-filter,box-shadow,border-color] duration-500",
         transparent
           ? "bg-transparent"
-          : "bg-bone/85 backdrop-blur-md shadow-soft"
+          : "border-b border-white/20 bg-bone/50 shadow-soft backdrop-blur-xl supports-[backdrop-filter]:bg-bone/35"
       )}
     >
+      {!transparent && (
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/30 via-bone/10 to-transparent" />
+      )}
       <div className="container flex items-center justify-between py-4 md:py-5">
         <Link to="/" className="flex items-center group" aria-label="Wild by LERA — Home">
           <img
@@ -97,7 +100,7 @@ export const SiteHeader = () => {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-border/60 bg-bone/95 backdrop-blur-md">
+        <div className="md:hidden border-t border-white/20 bg-bone/55 backdrop-blur-xl supports-[backdrop-filter]:bg-bone/40">
           <nav className="container flex flex-col py-6 gap-1">
             {links.map((l) => (
               <RouterNavLink
