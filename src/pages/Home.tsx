@@ -73,7 +73,7 @@ const Home = () => {
             Welcome to Wild By LERA. Nestled in the heart of Elementaita, at the foot of a tranquil and beautiful hill called <em>The Sleeping Warrior</em>, LERA is a haven of warmth, tranquility and rejuvenation.
           </p>
           <p>
-            Five hand-built triangular pods, two restaurants under acacia trees, and the long, quiet view of Lake Elementaita. Come for a night. Stay for the silence.
+           Five hand-built A-frame pods, and a restaurant under acacia trees, and the long, quiet view of Lake Elementaita. Come for a night. Stay for the silence.
           </p>
           <Link to="/stays" className="inline-flex items-center gap-2 mt-2 text-sage-deep border-b border-sage-deep/40 pb-1 hover:border-sage-deep transition-colors">
             Discover the stays <ArrowRight size={16} />
@@ -85,8 +85,8 @@ const Home = () => {
       <section className="bg-linen/60 py-20 md:py-28">
         <div className="container grid md:grid-cols-3 gap-12">
           {[
-            { icon: Mountain, title: "Wild views", body: "Wake to the Sleeping Warrior, the conservancy and the lake — through a triangular glass facade." },
-            { icon: Leaf, title: "Built with care", body: "Locally crafted timber pods. Eco-conscious systems. A footprint as light as the morning mist." },
+             { icon: Mountain, title: "Wild views", body: "Wake to the Sleeping Warrior, the Soysambu conservancy and the lake Elementaita — through a triangular glass facade." },
+             { icon: Leaf, title: "Built with care", body: "Locally crafted A-frame pods. Eco-conscious systems. A footprint as light as the morning mist." },
             { icon: Coffee, title: "Slow mornings", body: "Breakfast included with every stay. Long walks, slow coffee, no agenda." },
           ].map(({ icon: Icon, title, body }) => (
             <div key={title} className="space-y-3">
