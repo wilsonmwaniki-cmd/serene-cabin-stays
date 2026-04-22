@@ -119,9 +119,11 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       return;
     }
     setSubmitting(true);
-    const { data: bookingRow, error } = await supabase
+    const bookingId = crypto.randomUUID();
+    const { error } = await supabase
       .from("bookings")
       .insert({
+        id: bookingId,
         pod_id: pod.id,
         guest_name: name.trim(),
         guest_email: email.trim(),
@@ -132,10 +134,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         children: childrenCount,
         rooms,
         notes: notes.trim() || null,
-      })
-      .select("id")
-      .single();
-    if (error || !bookingRow) {
+      });
+    if (error) {
       setSubmitting(false);
       toast({ title: "Could not submit", description: error?.message ?? "Please try again.", variant: "destructive" });
       return;
@@ -145,7 +145,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     if (chosen.length > 0) {
       const { error: addonErr } = await supabase.from("booking_addons").insert(
         chosen.map((a) => ({
-          booking_id: bookingRow.id,
+          booking_id: bookingId,
           addon_id: a.id,
           quantity: 1,
           unit_price_kes: a.price_kes,
@@ -182,14 +182,14 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       body: {
         templateName: "booking-inquiry-received",
         recipientEmail: emailData.email,
-        idempotencyKey: `inquiry-received-${bookingRow.id}`,
+        idempotencyKey: `inquiry-received-${bookingId}`,
         templateData: emailData,
       },
     }).catch(() => {});
     supabase.functions.invoke("send-transactional-email", {
       body: {
         templateName: "booking-inquiry-admin-alert",
-        idempotencyKey: `inquiry-admin-${bookingRow.id}`,
+        idempotencyKey: `inquiry-admin-${bookingId}`,
         templateData: emailData,
       },
     }).catch(() => {});
