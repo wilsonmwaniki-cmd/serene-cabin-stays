@@ -1,5 +1,3 @@
-import nodemailer from "nodemailer";
-
 const SITE_NAME = "Wild by LERA";
 const ALERT_EMAIL = "bookings@lera.co.ke";
 const CONTACT_PHONE = "+254725744695";
@@ -102,13 +100,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = Number(process.env.SMTP_PORT || "465");
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpFrom = process.env.SMTP_FROM || `${SITE_NAME} <bookings@lera.co.ke>`;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFrom = process.env.RESEND_FROM || `${SITE_NAME} <bookings@lera.co.ke>`;
 
-  if (!smtpHost || !smtpUser || !smtpPass) {
+  if (!resendApiKey) {
     return res.status(500).json({ error: "Email is not configured" });
   }
 
@@ -123,48 +118,31 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Unknown email template" });
   }
 
-  const transportOptions = [
-    {
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-    },
-    ...(smtpPort === 465
-      ? [{ host: smtpHost, port: 587, secure: false }]
-      : [{ host: smtpHost, port: 465, secure: true }]),
-  ];
-
   try {
-    let lastError = null;
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+        ...(req.body?.idempotencyKey ? { "Idempotency-Key": String(req.body.idempotencyKey) } : {}),
+      },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: [email.to],
+        subject: email.subject,
+        html: email.html,
+        reply_to: ALERT_EMAIL,
+      }),
+    });
 
-    for (const option of transportOptions) {
-      try {
-        const transporter = nodemailer.createTransport({
-          ...option,
-          auth: {
-            user: smtpUser,
-            pass: smtpPass,
-          },
-          connectionTimeout: 12000,
-          greetingTimeout: 12000,
-          socketTimeout: 15000,
-        });
+    const data = await response.json().catch(() => ({}));
 
-        await transporter.sendMail({
-          from: smtpFrom,
-          to: email.to,
-          replyTo: smtpUser,
-          subject: email.subject,
-          html: email.html,
-        });
-
-        return res.status(200).json({ success: true, port: option.port });
-      } catch (error) {
-        lastError = error;
-      }
+    if (!response.ok) {
+      const message = data?.message || data?.error || "Email send failed";
+      return res.status(500).json({ error: message });
     }
 
-    throw lastError ?? new Error("Email send failed");
+    return res.status(200).json({ success: true, id: data?.id ?? null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Email send failed";
     return res.status(500).json({ error: message });
