@@ -22,7 +22,7 @@ const Stays = () => {
           Pods built around the view.
         </h1>
         <p className="mt-5 text-lg text-foreground/75 max-w-2xl">
-          Each cabin is hand-built from local timber, with a triangular glass facade framing the savannah, the lake, or the hill.
+           Each cabin is hand-built from local materials, with a triangular glass facade framing the savannah, the lake, or the hill.
         </p>
       </section>
 
