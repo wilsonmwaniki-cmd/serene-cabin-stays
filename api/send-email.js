@@ -123,29 +123,48 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Unknown email template" });
   }
 
-  try {
-    const transporter = nodemailer.createTransport({
+  const transportOptions = [
+    {
       host: smtpHost,
       port: smtpPort,
       secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
-    });
+    },
+    ...(smtpPort === 465
+      ? [{ host: smtpHost, port: 587, secure: false }]
+      : [{ host: smtpHost, port: 465, secure: true }]),
+  ];
 
-    await transporter.sendMail({
-      from: smtpFrom,
-      to: email.to,
-      replyTo: smtpUser,
-      subject: email.subject,
-      html: email.html,
-    });
+  try {
+    let lastError = null;
 
-    return res.status(200).json({ success: true });
+    for (const option of transportOptions) {
+      try {
+        const transporter = nodemailer.createTransport({
+          ...option,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+          connectionTimeout: 12000,
+          greetingTimeout: 12000,
+          socketTimeout: 15000,
+        });
+
+        await transporter.sendMail({
+          from: smtpFrom,
+          to: email.to,
+          replyTo: smtpUser,
+          subject: email.subject,
+          html: email.html,
+        });
+
+        return res.status(200).json({ success: true, port: option.port });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError ?? new Error("Email send failed");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Email send failed";
     return res.status(500).json({ error: message });
