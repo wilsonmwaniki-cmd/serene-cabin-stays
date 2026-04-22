@@ -28,13 +28,15 @@ const Stays = () => {
 
       <section className="container pb-24 space-y-20 md:space-y-28">
         {isLoading && <p className="text-muted-foreground">Loading…</p>}
-        {pods.map((pod, i) => (
+        {pods.map((pod, i) => {
+          const nightlyFrom = pod.price_kes + (pod.surcharge_kes ?? 0);
+          return (
           <article key={pod.id} className={`grid md:grid-cols-12 gap-8 md:gap-14 items-center ${i % 2 === 1 ? "md:[&>div:first-child]:order-2" : ""}`}>
             <div className="md:col-span-7 bg-linen overflow-hidden">
               <img src={podImages[pod.slug] ?? pod1} alt={pod.name} loading="lazy" width={1280} height={960} className="w-full h-auto object-contain" />
             </div>
             <div className="md:col-span-5">
-              <div className="text-xs uppercase tracking-[0.3em] text-ember mb-3">From KES {pod.price_kes.toLocaleString()} / night</div>
+              <div className="text-xs uppercase tracking-[0.3em] text-ember mb-3">From KES {nightlyFrom.toLocaleString()} / night</div>
               <h2 className="font-display text-4xl md:text-5xl text-sage-deep mb-5">{pod.name}</h2>
               <p className="text-foreground/75 leading-relaxed mb-6">{pod.description}</p>
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mb-6">
@@ -51,7 +53,8 @@ const Stays = () => {
               <PodGallery podId={pod.id} />
             </div>
           </article>
-        ))}
+          );
+        })}
       </section>
 
       {/* Interior strip */}

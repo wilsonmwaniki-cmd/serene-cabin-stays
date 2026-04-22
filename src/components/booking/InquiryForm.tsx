@@ -247,7 +247,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         <Field label="Pod">
           <select value={podId} onChange={(e) => setPodId(e.target.value)} className="w-full bg-transparent font-display text-lg outline-none">
             {pods.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} — KES {p.price_kes.toLocaleString()}/night</option>
+              <option key={p.id} value={p.id}>{p.name} — KES {(p.price_kes + (p.surcharge_kes ?? 0)).toLocaleString()}/night</option>
             ))}
           </select>
         </Field>

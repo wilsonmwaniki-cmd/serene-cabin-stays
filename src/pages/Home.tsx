@@ -111,7 +111,9 @@ const Home = () => {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          {pods.map((p) => (
+          {pods.map((p) => {
+            const nightlyFrom = p.price_kes + (p.surcharge_kes ?? 0);
+            return (
             <Link key={p.id} to="/stays" className="group block">
               <div className="aspect-[4/5] overflow-hidden mb-5 bg-linen">
                 <img
@@ -126,12 +128,13 @@ const Home = () => {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <h3 className="font-display text-2xl md:text-3xl text-sage-deep">{p.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">From KES {p.price_kes.toLocaleString()} / night</p>
+                  <p className="text-sm text-muted-foreground mt-1">From KES {nightlyFrom.toLocaleString()} / night</p>
                 </div>
                 <span className="text-sm uppercase tracking-[0.2em] text-ember group-hover:text-ember-deep transition-colors">Discover →</span>
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       </section>
 
