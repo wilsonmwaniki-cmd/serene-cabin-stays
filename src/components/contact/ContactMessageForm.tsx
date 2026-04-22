@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { sendEmail } from "@/lib/send-email";
 import { toast } from "@/hooks/use-toast";
 import { Check } from "lucide-react";
 
@@ -79,20 +80,16 @@ export const ContactMessageForm = () => {
     }
 
     // Fire-and-forget guest confirmation + admin alert
-    supabase.functions.invoke("send-transactional-email", {
-      body: {
-        templateName: "contact-received",
-        recipientEmail: payload.email,
-        idempotencyKey: `contact-received-${id}`,
-        templateData: { name: payload.name, message: payload.message },
-      },
+    sendEmail({
+      templateName: "contact-received",
+      recipientEmail: payload.email,
+      idempotencyKey: `contact-received-${id}`,
+      templateData: { name: payload.name, message: payload.message },
     }).catch(() => {});
-    supabase.functions.invoke("send-transactional-email", {
-      body: {
-        templateName: "contact-admin-alert",
-        idempotencyKey: `contact-admin-${id}`,
-        templateData: payload,
-      },
+    sendEmail({
+      templateName: "contact-admin-alert",
+      idempotencyKey: `contact-admin-${id}`,
+      templateData: payload,
     }).catch(() => {});
 
     setDone(true);

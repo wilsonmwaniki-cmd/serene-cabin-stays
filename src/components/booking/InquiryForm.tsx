@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { format, differenceInCalendarDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { sendEmail } from "@/lib/send-email";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import { useAddons, calcAddonTotal, pricingUnitLabel } from "@/hooks/useAddons";
@@ -212,20 +213,16 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       rooms,
       notes: notes.trim() || undefined,
     };
-    supabase.functions.invoke("send-transactional-email", {
-      body: {
-        templateName: "booking-inquiry-received",
-        recipientEmail: emailData.email,
-        idempotencyKey: `inquiry-received-${bookingId}`,
-        templateData: emailData,
-      },
+    sendEmail({
+      templateName: "booking-inquiry-received",
+      recipientEmail: emailData.email,
+      idempotencyKey: `inquiry-received-${bookingId}`,
+      templateData: emailData,
     }).catch(() => {});
-    supabase.functions.invoke("send-transactional-email", {
-      body: {
-        templateName: "booking-inquiry-admin-alert",
-        idempotencyKey: `inquiry-admin-${bookingId}`,
-        templateData: emailData,
-      },
+    sendEmail({
+      templateName: "booking-inquiry-admin-alert",
+      idempotencyKey: `inquiry-admin-${bookingId}`,
+      templateData: emailData,
     }).catch(() => {});
   };
 

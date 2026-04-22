@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sendEmail } from "@/lib/send-email";
 import { useAdminBookings, type AdminBooking } from "@/hooks/useAdminBookings";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,19 +29,17 @@ const AdminBookings = () => {
 
       // Try to send guest email — silently skip if not yet configured
       try {
-        await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: status === "confirmed" ? "booking-confirmation" : "booking-decline",
-            recipientEmail: b.guest_email,
-            idempotencyKey: `booking-${status}-${b.id}`,
-            templateData: {
-              name: b.guest_name,
-              podName: b.pod_name,
-              checkIn: fmtDate(b.check_in),
-              checkOut: fmtDate(b.check_out),
-              adults: b.adults,
-              children: b.children,
-            },
+        await sendEmail({
+          templateName: status === "confirmed" ? "booking-confirmation" : "booking-decline",
+          recipientEmail: b.guest_email,
+          idempotencyKey: `booking-${status}-${b.id}`,
+          templateData: {
+            name: b.guest_name,
+            podName: b.pod_name,
+            checkIn: fmtDate(b.check_in),
+            checkOut: fmtDate(b.check_out),
+            adults: b.adults,
+            children: b.children,
           },
         });
       } catch {
