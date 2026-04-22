@@ -34,10 +34,38 @@ const effectiveNightlyRate = (pod: Pod | undefined, nights: number) => {
 
 const podRoomSurcharge = (pod: Pod | undefined) => pod?.surcharge_kes ?? 0;
 
+const normalizeName = (value: string) =>
+  value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) =>
+          part
+            .split("'")
+            .map((piece) => piece ? `${piece.charAt(0).toUpperCase()}${piece.slice(1).toLowerCase()}` : piece)
+            .join("'")
+        )
+        .join("-")
+    )
+    .join(" ");
+
 const schema = z.object({
-  guest_name: z.string().trim().min(2, "Please share your name").max(120),
-  guest_email: z.string().trim().email("Please enter a valid email").max(255),
-  guest_phone: z.string().trim().min(5).max(40).optional().or(z.literal("")),
+  guest_name: z
+    .string()
+    .trim()
+    .min(5, "Please enter first and last name")
+    .max(120)
+    .refine((value) => value.split(/\s+/).filter(Boolean).length >= 2, "Please enter first and last name"),
+  guest_email: z.string().trim().email("Please enter a valid email you can access").max(255),
+  guest_phone: z
+    .string()
+    .trim()
+    .min(10, "Phone number is required")
+    .max(20, "Please enter a valid phone number")
+    .regex(/^\+?[0-9\s()-]{10,20}$/, "Please enter a valid phone number"),
   notes: z.string().max(1000).optional().or(z.literal("")),
 });
 
@@ -108,11 +136,17 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = schema.safeParse({ guest_name: name, guest_email: email, guest_phone: phone, notes });
+    const normalizedName = normalizeName(name);
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = phone.trim();
+    const parsed = schema.safeParse({ guest_name: normalizedName, guest_email: normalizedEmail, guest_phone: normalizedPhone, notes });
     if (!parsed.success) {
       toast({ title: "Please review the form", description: parsed.error.errors[0].message, variant: "destructive" });
       return;
     }
+    setName(normalizedName);
+    setEmail(normalizedEmail);
+    setPhone(normalizedPhone);
     if (!pod) return;
     if (!enoughUnits) {
       toast({ title: "Not enough availability", description: "Please choose different dates or fewer rooms.", variant: "destructive" });
@@ -125,9 +159,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       .insert({
         id: bookingId,
         pod_id: pod.id,
-        guest_name: name.trim(),
-        guest_email: email.trim(),
-        guest_phone: phone.trim() || null,
+        guest_name: normalizedName,
+        guest_email: normalizedEmail,
+        guest_phone: normalizedPhone,
         check_in: checkIn,
         check_out: checkOut,
         adults,
@@ -167,9 +201,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       try { return fmtDate(new Date(d), "MMM d, yyyy"); } catch { return d; }
     };
     const emailData = {
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim() || undefined,
+      name: normalizedName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
       podName: pod.name,
       checkIn: fmt(checkIn),
       checkOut: fmt(checkOut),
@@ -355,13 +389,13 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
       <div className="grid md:grid-cols-2 gap-4">
         <Field label="Your Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="Full name" required />
+          <input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => setName((current) => normalizeName(current))} className="w-full bg-transparent text-base outline-none" placeholder="First and last name" required />
         </Field>
         <Field label="Email">
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="you@example.com" required />
         </Field>
-        <Field label="Phone (optional)">
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="+254…" />
+        <Field label="Phone">
+          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="+254..." required />
         </Field>
         <Field label="Notes (optional)">
           <input value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="Anniversary, dietary, arrival time…" />

@@ -4,10 +4,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Check } from "lucide-react";
 
+const normalizeName = (value: string) =>
+  value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) =>
+          part
+            .split("'")
+            .map((piece) => piece ? `${piece.charAt(0).toUpperCase()}${piece.slice(1).toLowerCase()}` : piece)
+            .join("'")
+        )
+        .join("-")
+    )
+    .join(" ");
+
 const schema = z.object({
-  name: z.string().trim().min(2, "Please share your name").max(120),
-  email: z.string().trim().email("Please enter a valid email").max(255),
-  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  name: z
+    .string()
+    .trim()
+    .min(5, "Please enter first and last name")
+    .max(120)
+    .refine((value) => value.split(/\s+/).filter(Boolean).length >= 2, "Please enter first and last name"),
+  email: z.string().trim().email("Please enter a valid email you can access").max(255),
+  phone: z
+    .string()
+    .trim()
+    .min(10, "Phone number is required")
+    .max(20, "Please enter a valid phone number")
+    .regex(/^\+?[0-9\s()-]{10,20}$/, "Please enter a valid phone number"),
   subject: z.string().trim().max(200).optional().or(z.literal("")),
   message: z.string().trim().min(5, "Please include a short message").max(2000),
 });
@@ -23,17 +51,23 @@ export const ContactMessageForm = () => {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = schema.safeParse({ name, email, phone, subject, message });
+    const normalizedName = normalizeName(name);
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = phone.trim();
+    const parsed = schema.safeParse({ name: normalizedName, email: normalizedEmail, phone: normalizedPhone, subject, message });
     if (!parsed.success) {
       toast({ title: "Please review the form", description: parsed.error.errors[0].message, variant: "destructive" });
       return;
     }
+    setName(normalizedName);
+    setEmail(normalizedEmail);
+    setPhone(normalizedPhone);
     setSubmitting(true);
     const id = crypto.randomUUID();
     const payload = {
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim() || null,
+      name: normalizedName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
       subject: subject.trim() || null,
       message: message.trim(),
     };
@@ -81,13 +115,13 @@ export const ContactMessageForm = () => {
     <form onSubmit={submit} className="space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
         <Field label="Your Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="Full name" required />
+          <input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => setName((current) => normalizeName(current))} className="w-full bg-transparent text-base outline-none" placeholder="First and last name" required />
         </Field>
         <Field label="Email">
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="you@example.com" required />
         </Field>
-        <Field label="Phone (optional)">
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="+254…" />
+        <Field label="Phone">
+          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="+254..." required />
         </Field>
         <Field label="Subject (optional)">
           <input value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full bg-transparent text-base outline-none" placeholder="A quick question" />
