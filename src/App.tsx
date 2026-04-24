@@ -16,6 +16,7 @@ import BookPod from "./pages/BookPod";
 import Unsubscribe from "./pages/Unsubscribe";
 import Admin from "./pages/Admin";
 import AdminBookings from "./pages/admin/Bookings";
+import AdminCalendar from "./pages/admin/Calendar";
 import AdminMessages from "./pages/admin/Messages";
 import AdminPods from "./pages/admin/Pods";
 import AdminAddons from "./pages/admin/Addons";
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Admin />} />
             <Route path="bookings" element={<AdminBookings />} />
+            <Route path="calendar" element={<AdminCalendar />} />
             <Route path="messages" element={<AdminMessages />} />
             <Route path="pods" element={<AdminPods />} />
             <Route path="addons" element={<AdminAddons />} />

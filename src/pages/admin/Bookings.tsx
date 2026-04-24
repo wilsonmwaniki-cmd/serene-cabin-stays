@@ -23,6 +23,23 @@ const AdminBookings = () => {
 
   const setStatus = async (b: AdminBooking, status: "confirmed" | "cancelled") => {
     setBusyId(b.id);
+    const previousBookings = qc.getQueryData<AdminBooking[]>(["admin_bookings"]) ?? [];
+    const previousCounts = qc.getQueryData<{ pendingBookings: number; newMessages: number }>(["admin_counts"]);
+
+    qc.setQueryData<AdminBooking[]>(["admin_bookings"], (current = []) =>
+      current.map((booking) =>
+        booking.id === b.id ? { ...booking, status } : booking
+      ),
+    );
+
+    qc.setQueryData<{ pendingBookings: number; newMessages: number } | undefined>(["admin_counts"], (current) => {
+      if (!current || b.status !== "pending") return current;
+      return {
+        ...current,
+        pendingBookings: Math.max(0, current.pendingBookings - 1),
+      };
+    });
+
     try {
       const { error } = await supabase.from("bookings").update({ status }).eq("id", b.id);
       if (error) throw error;
@@ -47,11 +64,14 @@ const AdminBookings = () => {
       }
 
       toast({ title: status === "confirmed" ? "Booking approved" : "Booking declined", description: `${b.guest_name} · ${b.pod_name}` });
-      qc.invalidateQueries({ queryKey: ["admin_bookings"] });
     } catch (err) {
+      qc.setQueryData(["admin_bookings"], previousBookings);
+      qc.setQueryData(["admin_counts"], previousCounts);
       const message = err instanceof Error ? err.message : "Failed";
       toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
+      qc.invalidateQueries({ queryKey: ["admin_bookings"] });
+      qc.invalidateQueries({ queryKey: ["admin_counts"] });
       setBusyId(null);
     }
   };
