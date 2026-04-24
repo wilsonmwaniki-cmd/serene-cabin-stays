@@ -8,6 +8,14 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import { useAddons, calcAddonTotal, pricingUnitLabel } from "@/hooks/useAddons";
 import { format as fmtDate } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Pod {
   id: string;
@@ -75,6 +83,24 @@ interface Props {
   defaultPodId?: string;
 }
 
+const WAIVER_BULLETS = [
+  "Slipping, falling or injury in and around construction sites, or general terrain, which may be slippery, wet or contain other hazards present.",
+  "Scratches or other injuries caused by stalls or enclosures, grooming tools and other equine equipment.",
+  "Allergic reactions to animals, plants, hay or other allergens.",
+  "Tripping over holes, materials or equipment.",
+  "Being attacked, bitten or poisoned by free animals found at Wild by Lera.",
+];
+
+const WAIVER_TERMS = [
+  "I hereby specifically waive and forever release Wild by Lera and its directors and agents from any liability for injuries arising from the inherent risks of walking, riding, working or participating in the environment and/or with horses, as well as the active negligence of Wild by Lera, its directors and agents.",
+  "By signing this agreement, I hereby acknowledge that, although there may be supervision during my time at Wild by Lera, there will not be a nurse on the premises and neither Wild by Lera nor its directors and agents assume any responsibility for my health or medical care.",
+  "I agree to indemnify, save and hold harmless Wild by Lera and its directors and agents from and against any loss, liability, damage, attorneys' fees or costs they may incur arising out of or in any way related to my presence or participation at the venue or any act or omission of Wild by Lera and its directors and agents.",
+  "By signing this agreement, I hereby acknowledge my full understanding, agreement and consent to my presence and/or participation in the activities at Wild by Lera, its directors and agents and with full knowledge and understanding of the disclosures, exemptions and releases contained herein.",
+  "If I am present and participate in activities or events at Wild by Lera, I do so at my own risk and hereby acknowledge and agree that Wild by Lera and/or any of its directors and agents shall not assume any liability or risk associated with injuries that may arise from my presence or participation there.",
+  "Tourists understand that, unless otherwise agreed in writing by Wild by Lera, Wild by Lera does not carry or maintain medical, health or disability insurance for any tourist. It is expected and suggested that each tourist obtains his or her own medical insurance.",
+  "The tourist grants and assigns to Wild by Lera all right, title and interest in all photographs and audio and video taken during the stay at Wild by Lera, including any royalties, profits or other benefits derived from such images. The tourist understands and agrees that no compensation is due in connection with the foregoing.",
+];
+
 export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [params] = useSearchParams();
   const [podId, setPodId] = useState(defaultPodId ?? pods[0]?.id ?? "");
@@ -92,6 +118,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<Record<string, boolean>>({});
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
   const { data: addons = [] } = useAddons();
 
   useEffect(() => {
@@ -143,6 +170,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     const parsed = schema.safeParse({ guest_name: normalizedName, guest_email: normalizedEmail, guest_phone: normalizedPhone, notes });
     if (!parsed.success) {
       toast({ title: "Please review the form", description: parsed.error.errors[0].message, variant: "destructive" });
+      return;
+    }
+    if (!waiverAccepted) {
+      toast({ title: "Waiver required", description: "Please read and accept the waiver before booking.", variant: "destructive" });
       return;
     }
     setName(normalizedName);
@@ -399,9 +430,25 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         </Field>
       </div>
 
+      <div className="border border-border bg-bone px-4 py-4 space-y-3">
+        <div className="flex items-start gap-3">
+          <input
+            id="booking-waiver"
+            type="checkbox"
+            checked={waiverAccepted}
+            onChange={(e) => setWaiverAccepted(e.target.checked)}
+            className="mt-1 h-4 w-4 accent-sage-deep"
+          />
+          <label htmlFor="booking-waiver" className="text-sm text-foreground/85 leading-relaxed">
+            By clicking <span className="font-medium">Request to Book</span>, I acknowledge that I have read and accepted the Wild by Lera waiver.
+          </label>
+        </div>
+        <WaiverDialog />
+      </div>
+
       <button
         type="submit"
-        disabled={submitting || !enoughUnits || nights <= 0}
+        disabled={submitting || !enoughUnits || nights <= 0 || !waiverAccepted}
         className="w-full bg-sage-deep hover:bg-sage text-bone py-4 text-sm uppercase tracking-[0.2em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {submitting ? "Sending…" : "Request to Book"}
@@ -416,4 +463,67 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
     <span className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">{label}</span>
     {children}
   </label>
+);
+
+const WaiverDialog = () => (
+  <Dialog>
+    <DialogTrigger asChild>
+      <button type="button" className="text-sm text-sage-deep underline underline-offset-4 hover:text-ember text-left">
+        Read the full waiver
+      </button>
+    </DialogTrigger>
+    <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle className="font-display text-2xl text-sage-deep">Wild by Lera Waiver</DialogTitle>
+        <DialogDescription>
+          Please read this carefully before submitting your booking request.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4 text-sm leading-7 text-foreground/85">
+        <p>
+          I hereby declare and acknowledge, in consideration of my ability and permission to access or visit Wild by Lera,
+          owned by Wild by Lera, located in Elementaita, Kenya.
+        </p>
+        <p className="font-medium text-sage-deep">
+          By signing this declaration you waive certain legal rights, including the right to recover damages in the event of
+          injury, death or property damage arising from visits, tours and/or participation in activities or events on the premises.
+        </p>
+        <p className="font-medium">Please read this statement carefully before signing. Your signature indicates your understanding and acceptance of its terms.</p>
+        <p>
+          By signing this form, I acknowledge on my own behalf that I have familiarized myself with the activities in which
+          I will be permitted to participate and that I will participate in these activities without restriction or limitation.
+        </p>
+        <p>
+          I understand that Wild by Lera has a construction site and that I am not allowed to enter any area indicated as a construction site.
+        </p>
+        <p>
+          I recognize the inherent risks involved in being at Wild by Lera, including wild animals, snakes, spiders, ants,
+          wasps, hiking and outdoor activities, including among others:
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          {WAIVER_BULLETS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        <ul className="list-disc pl-5 space-y-2">
+          {WAIVER_TERMS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        <p>
+          The tourist expressly agrees that this document is intended to be enforced and used as permitted by the laws of Kenya
+          and shall be governed by and construed in accordance with the laws of Kenya.
+        </p>
+        <p>
+          The tourist agrees that, if any term or provision of this waiver is held to be invalid by a court of competent jurisdiction,
+          the remaining provisions shall continue to remain enforceable.
+        </p>
+        <p>
+          By signing below, tourists and, if applicable, parents or guardians, acknowledge that they have read this waiver and understand all its terms.
+          The tourist and, if applicable, the parent or guardian, acknowledge that this waiver is signed and accepted voluntarily and with full knowledge of its legal significance.
+        </p>
+      </div>
+    </DialogContent>
+  </Dialog>
 );
