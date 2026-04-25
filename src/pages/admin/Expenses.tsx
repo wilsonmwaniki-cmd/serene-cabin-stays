@@ -13,11 +13,78 @@ import { toast } from "@/hooks/use-toast";
 
 type Expense = Tables<"expenses">;
 type BusinessArea = Expense["business_area"];
+type ExpenseCategoryOption = typeof EXPENSE_CATEGORIES[number];
 
 const kes = (value: number) => `KES ${value.toLocaleString()}`;
+const OTHER_CATEGORY = "__other__";
+
+const EXPENSE_CATEGORIES = [
+  "Staff",
+  "Laundry",
+  "Cleaning supplies",
+  "Repairs",
+  "Utilities",
+  "Food stock",
+  "Marketing",
+  "Transport",
+  "Fuel",
+  "Internet",
+  "Security",
+  "Maintenance",
+  "Furniture",
+  "Equipment",
+  "Licences & permits",
+  "Professional fees",
+] as const;
 
 const areaLabel = (value: BusinessArea) =>
   value === "cabins" ? "Cabins" : value === "restaurant" ? "Restaurant" : "Shared overhead";
+
+const isPresetCategory = (value: string) =>
+  EXPENSE_CATEGORIES.includes(value as ExpenseCategoryOption);
+
+const CategoryField = ({
+  category,
+  setCategory,
+}: {
+  category: string;
+  setCategory: (value: string) => void;
+}) => {
+  const [mode, setMode] = useState<string>(isPresetCategory(category) ? category : OTHER_CATEGORY);
+
+  const handleSelect = (value: string) => {
+    setMode(value);
+    if (value !== OTHER_CATEGORY) {
+      setCategory(value);
+    } else if (isPresetCategory(category)) {
+      setCategory("");
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <Label>Category</Label>
+        <Select value={mode} onValueChange={handleSelect}>
+          <SelectTrigger><SelectValue placeholder="Choose a category" /></SelectTrigger>
+          <SelectContent>
+            {EXPENSE_CATEGORIES.map((item) => (
+              <SelectItem key={item} value={item}>{item}</SelectItem>
+            ))}
+            <SelectItem value={OTHER_CATEGORY}>Other</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {mode === OTHER_CATEGORY && (
+        <Input
+          placeholder="Type a custom category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
+      )}
+    </div>
+  );
+};
 
 const ExpenseRow = ({ expense }: { expense: Expense }) => {
   const qc = useQueryClient();
@@ -95,10 +162,7 @@ const ExpenseRow = ({ expense }: { expense: Expense }) => {
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label>Category</Label>
-          <Input value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
-        </div>
+        <CategoryField category={draft.category} setCategory={(value) => setDraft({ ...draft, category: value })} />
         <div>
           <Label>Vendor or supplier</Label>
           <Input value={draft.vendor} onChange={(e) => setDraft({ ...draft, vendor: e.target.value })} />
@@ -212,10 +276,7 @@ const AdminExpenses = () => {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Category</Label>
-            <Input placeholder="Laundry, repairs, staff, supplies" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
-          </div>
+          <CategoryField category={draft.category} setCategory={(value) => setDraft({ ...draft, category: value })} />
           <div>
             <Label>Vendor or supplier</Label>
             <Input placeholder="Optional" value={draft.vendor} onChange={(e) => setDraft({ ...draft, vendor: e.target.value })} />
