@@ -138,6 +138,12 @@ const AdminCalendar = () => {
                   <InfoLine label="Booked on" value={format(parseISO(booking.created_at), "MMM d, yyyy")} />
                 </div>
 
+                <div className="grid md:grid-cols-3 gap-3 text-sm mt-3">
+                  <InfoLine label="Total" value={`KES ${(booking.total_kes ?? 0).toLocaleString()}`} />
+                  <InfoLine label="Discount" value={booking.discount_kes ? `KES ${booking.discount_kes.toLocaleString()}` : "—"} />
+                  <InfoLine label="Code" value={booking.promo_code_text ?? "—"} />
+                </div>
+
                 {booking.notes && <p className="mt-4 text-sm text-foreground/75 italic">"{booking.notes}"</p>}
               </article>
             ))}

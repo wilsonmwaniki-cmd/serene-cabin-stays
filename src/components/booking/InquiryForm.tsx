@@ -3,10 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { format, differenceInCalendarDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { sendEmail } from "@/lib/send-email";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Check, AlertCircle } from "lucide-react";
-import { useAddons, calcAddonTotal, pricingUnitLabel } from "@/hooks/useAddons";
+import { useAddons, pricingUnitLabel } from "@/hooks/useAddons";
 import { format as fmtDate } from "date-fns";
 import {
   Dialog,
@@ -16,6 +17,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  type AppliedPromoCode,
+  SINGLE_NIGHT_EXCLUDED_ADDONS,
+  SINGLE_NIGHT_RATE_KES,
+  MULTI_NIGHT_RATE_KES,
+  calculateBookingPricing,
+  calcAddonLineTotal,
+} from "@/lib/booking-pricing";
 
 interface Pod {
   id: string;
@@ -25,23 +34,6 @@ interface Pod {
   surcharge_kes?: number;
   capacity: number;
 }
-
-// Pricing rule: 1-night stays are charged at a higher B&B rate; 2+ nights get a discounted rate.
-const SINGLE_NIGHT_RATE_KES = 5000;
-const MULTI_NIGHT_RATE_KES = 4250;
-// Add-ons not offered for single-night stays.
-const SINGLE_NIGHT_EXCLUDED_ADDONS = new Set(["full-meals"]);
-
-const effectiveNightlyRate = (pod: Pod | undefined, nights: number) => {
-  if (!pod) return 0;
-  // Apply tiered B&B pricing to the glamping pods.
-  if (pod.slug?.startsWith("glamping-pod")) {
-    return nights === 1 ? SINGLE_NIGHT_RATE_KES : MULTI_NIGHT_RATE_KES;
-  }
-  return pod.price_kes;
-};
-
-const podRoomSurcharge = (pod: Pod | undefined) => pod?.surcharge_kes ?? 0;
 
 const normalizeName = (value: string) =>
   value
@@ -119,6 +111,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [done, setDone] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<Record<string, boolean>>({});
   const [waiverAccepted, setWaiverAccepted] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [applyingPromo, setApplyingPromo] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromoCode | null>(null);
   const { data: addons = [] } = useAddons();
 
   useEffect(() => {
@@ -138,14 +133,6 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
   const pod = pods.find((p) => p.id === podId);
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
-  const nightlyRate = effectiveNightlyRate(pod, nights);
-  const roomSurcharge = podRoomSurcharge(pod);
-  // Per-person pricing: adults at full rate, children (≤12 years) at half rate.
-  const adultsSubtotal = nightlyRate * adults * nights;
-  const childrenSubtotal = nightlyRate * 0.5 * childrenCount * nights;
-  // Pod 2 carries a flat surcharge per room per night.
-  const surchargeSubtotal = roomSurcharge * rooms * nights;
-  const baseSubtotal = adultsSubtotal + childrenSubtotal + surchargeSubtotal;
   const enoughUnits = availability ? availability.available >= rooms : false;
 
   const visibleAddons = useMemo(
@@ -153,14 +140,85 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     [addons, nights],
   );
 
-  const addonsTotal = useMemo(
-    () =>
-      visibleAddons
-        .filter((a) => selectedAddons[a.id])
-        .reduce((sum, a) => sum + calcAddonTotal(a, nights, rooms, adults), 0),
-    [visibleAddons, selectedAddons, nights, rooms, adults],
+  const chosenAddons = useMemo(
+    () => visibleAddons.filter((a) => selectedAddons[a.id]),
+    [visibleAddons, selectedAddons],
   );
-  const grandTotal = baseSubtotal + addonsTotal;
+
+  const pricing = useMemo(
+    () =>
+      calculateBookingPricing({
+        pod,
+        nights,
+        adults,
+        children: childrenCount,
+        rooms,
+        selectedAddons: chosenAddons,
+        promo: appliedPromo,
+      }),
+    [pod, nights, adults, childrenCount, rooms, chosenAddons, appliedPromo],
+  );
+
+  const nightlyRate = pricing.nightlyRate;
+  const roomSurcharge = pricing.roomSurcharge;
+  const adultsSubtotal = pricing.adultsSubtotal;
+  const childrenSubtotal = pricing.childrenSubtotal;
+  const surchargeSubtotal = pricing.surchargeSubtotal;
+  const addonsTotal = pricing.addonsSubtotal;
+  const subtotalKes = pricing.subtotalKes;
+  const discountKes = pricing.discountKes;
+  const grandTotal = pricing.totalKes;
+
+  const applyPromoCode = async () => {
+    const normalizedCode = promoInput.trim().toUpperCase();
+    if (!normalizedCode) {
+      setAppliedPromo(null);
+      toast({ title: "Code removed", description: "No code is currently applied." });
+      return;
+    }
+
+    setApplyingPromo(true);
+    const { data, error } = await supabase
+      .from("promo_codes")
+      .select("*")
+      .eq("code", normalizedCode)
+      .maybeSingle();
+    setApplyingPromo(false);
+
+    if (error) {
+      toast({ title: "Code check failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    const promo = data as Tables<"promo_codes"> | null;
+    if (!promo || !promo.is_active) {
+      setAppliedPromo(null);
+      toast({ title: "Invalid code", description: "That code could not be used.", variant: "destructive" });
+      return;
+    }
+
+    const now = new Date();
+    if ((promo.starts_at && new Date(promo.starts_at) > now) || (promo.ends_at && new Date(promo.ends_at) < now)) {
+      setAppliedPromo(null);
+      toast({ title: "Code unavailable", description: "That code is not active right now.", variant: "destructive" });
+      return;
+    }
+
+    setPromoInput(promo.code);
+    setAppliedPromo({
+      id: promo.id,
+      code: promo.code,
+      label: promo.label,
+      kind: promo.kind,
+      discount_type: promo.discount_type,
+      amount_kes: promo.amount_kes,
+      percent_off: promo.percent_off,
+    });
+    toast({
+      title: `${promo.kind === "affiliate" ? "Affiliate" : "Discount"} code applied`,
+      description: promo.label,
+    });
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,6 +258,12 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         children: childrenCount,
         rooms,
         notes: notes.trim() || null,
+        subtotal_kes: subtotalKes,
+        discount_kes: discountKes,
+        total_kes: grandTotal,
+        promo_code_id: appliedPromo?.id ?? null,
+        promo_code_text: appliedPromo?.code ?? null,
+        promo_code_kind: appliedPromo?.kind ?? null,
       });
     if (error) {
       setSubmitting(false);
@@ -207,10 +271,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       return;
     }
 
-    const chosen = visibleAddons.filter((a) => selectedAddons[a.id]);
-    if (chosen.length > 0) {
+    if (chosenAddons.length > 0) {
       const { error: addonErr } = await supabase.from("booking_addons").insert(
-        chosen.map((a) => ({
+        chosenAddons.map((a) => ({
           booking_id: bookingId,
           addon_id: a.id,
           quantity: 1,
@@ -243,6 +306,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       children: childrenCount,
       rooms,
       notes: notes.trim() || undefined,
+      subtotalKes,
+      discountKes,
+      totalKes: grandTotal,
+      promoCode: appliedPromo?.code ?? undefined,
     };
     sendEmail({
       templateName: "booking-inquiry-received",
@@ -346,7 +413,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <ul className="divide-y divide-border">
             {visibleAddons.map((a) => {
               const checked = !!selectedAddons[a.id];
-              const lineTotal = calcAddonTotal(a, Math.max(nights, 1), rooms, adults);
+              const lineTotal = calcAddonLineTotal(a, Math.max(nights, 1), rooms, adults);
               return (
                 <li key={a.id}>
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-linen/40 transition-colors">
@@ -407,6 +474,43 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <div className="flex justify-between">
             <span className="text-muted-foreground">Add-ons</span>
             <span>KES {addonsTotal.toLocaleString()}</span>
+          </div>
+        )}
+        <div className="border-t border-border pt-3 mt-3 space-y-3">
+          <div className="grid md:grid-cols-[1fr_auto] gap-3 items-end">
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                Discount or Affiliate Code
+              </label>
+              <input
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                className="w-full bg-bone border border-border px-3 py-2 text-sm outline-none"
+                placeholder="Enter code"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={applyPromoCode}
+              disabled={applyingPromo}
+              className="h-10 px-4 bg-sage-deep hover:bg-sage text-bone text-sm transition-colors disabled:opacity-50"
+            >
+              {applyingPromo ? "Checking…" : "Apply"}
+            </button>
+          </div>
+          {appliedPromo && (
+            <div className="text-xs text-sage-deep">
+              {appliedPromo.label} · {appliedPromo.kind === "affiliate" ? "Affiliate code" : "Discount code"}
+            </div>
+          )}
+        </div>
+        {discountKes > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              {appliedPromo?.kind === "affiliate" ? "Affiliate code" : "Discount"}
+              {appliedPromo?.code ? ` (${appliedPromo.code})` : ""}
+            </span>
+            <span>-KES {discountKes.toLocaleString()}</span>
           </div>
         )}
         <div className="flex justify-between font-display text-lg pt-2 border-t border-border">

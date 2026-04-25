@@ -58,6 +58,10 @@ const AdminBookings = () => {
             checkOut: fmtDate(b.check_out),
             adults: b.adults,
             children: b.children,
+            subtotalKes: b.subtotal_kes ?? b.total_kes ?? 0,
+            discountKes: b.discount_kes ?? 0,
+            totalKes: b.total_kes ?? 0,
+            promoCode: b.promo_code_text ?? undefined,
           },
         });
       } catch {
@@ -133,6 +137,11 @@ const AdminBookings = () => {
               <Field label="Adults / Children" value={`${b.adults} / ${b.children}`} />
               <Field label="Rooms" value={String(b.rooms)} />
             </dl>
+            <div className="mt-4 grid md:grid-cols-3 gap-3 text-sm">
+              <Field label="Total" value={`KES ${(b.total_kes ?? 0).toLocaleString()}`} />
+              <Field label="Discount" value={b.discount_kes ? `KES ${b.discount_kes.toLocaleString()}` : "—"} />
+              <Field label="Code" value={b.promo_code_text ?? "—"} />
+            </div>
             {b.notes && <p className="mt-4 text-sm text-foreground/75 italic">"{b.notes}"</p>}
             {b.addons.length > 0 && (
               <div className="mt-4 pt-4 border-t border-border/60">

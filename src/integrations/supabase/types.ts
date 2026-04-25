@@ -102,14 +102,20 @@ export type Database = {
           check_out: string
           children: number
           created_at: string
+          discount_kes: number | null
           guest_email: string
           guest_name: string
           guest_phone: string | null
           id: string
           notes: string | null
           pod_id: string
+          promo_code_id: string | null
+          promo_code_kind: Database["public"]["Enums"]["promo_code_kind"] | null
+          promo_code_text: string | null
           rooms: number
           status: Database["public"]["Enums"]["booking_status"]
+          subtotal_kes: number | null
+          total_kes: number | null
         }
         Insert: {
           adults?: number
@@ -117,14 +123,20 @@ export type Database = {
           check_out: string
           children?: number
           created_at?: string
+          discount_kes?: number | null
           guest_email: string
           guest_name: string
           guest_phone?: string | null
           id?: string
           notes?: string | null
           pod_id: string
+          promo_code_id?: string | null
+          promo_code_kind?: Database["public"]["Enums"]["promo_code_kind"] | null
+          promo_code_text?: string | null
           rooms?: number
           status?: Database["public"]["Enums"]["booking_status"]
+          subtotal_kes?: number | null
+          total_kes?: number | null
         }
         Update: {
           adults?: number
@@ -132,14 +144,20 @@ export type Database = {
           check_out?: string
           children?: number
           created_at?: string
+          discount_kes?: number | null
           guest_email?: string
           guest_name?: string
           guest_phone?: string | null
           id?: string
           notes?: string | null
           pod_id?: string
+          promo_code_id?: string | null
+          promo_code_kind?: Database["public"]["Enums"]["promo_code_kind"] | null
+          promo_code_text?: string | null
           rooms?: number
           status?: Database["public"]["Enums"]["booking_status"]
+          subtotal_kes?: number | null
+          total_kes?: number | null
         }
         Relationships: [
           {
@@ -147,6 +165,13 @@ export type Database = {
             columns: ["pod_id"]
             isOneToOne: false
             referencedRelation: "pods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
             referencedColumns: ["id"]
           },
         ]
@@ -267,6 +292,54 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          amount_kes: number
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: Database["public"]["Enums"]["promo_discount_type"]
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["promo_code_kind"]
+          label: string
+          percent_off: number | null
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_kes?: number
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type?: Database["public"]["Enums"]["promo_discount_type"]
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["promo_code_kind"]
+          label: string
+          percent_off?: number | null
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_kes?: number
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: Database["public"]["Enums"]["promo_discount_type"]
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["promo_code_kind"]
+          label?: string
+          percent_off?: number | null
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       site_content: {
         Row: {
           id: string
@@ -338,6 +411,8 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       booking_status: "pending" | "confirmed" | "cancelled"
       message_status: "new" | "read" | "replied" | "archived"
+      promo_code_kind: "discount" | "affiliate"
+      promo_discount_type: "fixed" | "percentage"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -469,6 +544,8 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       booking_status: ["pending", "confirmed", "cancelled"],
       message_status: ["new", "read", "replied", "archived"],
+      promo_code_kind: ["discount", "affiliate"],
+      promo_discount_type: ["fixed", "percentage"],
     },
   },
 } as const
