@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { sendEmail } from "@/lib/send-email";
+import { createGoogleCalendarUrl } from "@/lib/google-calendar";
 import { useAdminBookings, type AdminBooking } from "@/hooks/useAdminBookings";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Check, X } from "lucide-react";
+import { CalendarPlus, Check, X } from "lucide-react";
 
 const statusVariant = (s: string) =>
   s === "confirmed" ? "default" : s === "cancelled" ? "destructive" : "secondary";
@@ -108,16 +109,23 @@ const AdminBookings = () => {
                   {b.pod_name} · {fmtDate(b.check_in)} → {fmtDate(b.check_out)}
                 </p>
               </div>
-              {b.status === "pending" && (
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => setStatus(b, "confirmed")} disabled={busyId === b.id}>
-                    <Check size={14} className="mr-1" /> Approve
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setStatus(b, "cancelled")} disabled={busyId === b.id}>
-                    <X size={14} className="mr-1" /> Decline
-                  </Button>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" asChild>
+                  <a href={createGoogleCalendarUrl(b)} target="_blank" rel="noreferrer">
+                    <CalendarPlus size={14} className="mr-1" /> Add to Google Calendar
+                  </a>
+                </Button>
+                {b.status === "pending" && (
+                  <>
+                    <Button size="sm" onClick={() => setStatus(b, "confirmed")} disabled={busyId === b.id}>
+                      <Check size={14} className="mr-1" /> Approve
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setStatus(b, "cancelled")} disabled={busyId === b.id}>
+                      <X size={14} className="mr-1" /> Decline
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-6 text-sm">
               <Field label="Email" value={b.guest_email} />

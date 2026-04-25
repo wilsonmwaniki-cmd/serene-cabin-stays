@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import { addDays, format, isAfter, isBefore, isSameDay, parseISO, subDays } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { format, isAfter, isBefore, isSameDay, parseISO, subDays } from "date-fns";
+import { Calendar as CalendarIcon, CalendarPlus } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAdminBookings } from "@/hooks/useAdminBookings";
+import { createGoogleCalendarUrl } from "@/lib/google-calendar";
 import { cn } from "@/lib/utils";
 
 const stayEndDate = (checkIn: string, checkOut: string) => {
@@ -120,6 +122,14 @@ const AdminCalendar = () => {
                   <div className="text-sm text-muted-foreground">
                     {booking.rooms} room{booking.rooms === 1 ? "" : "s"} · {booking.adults} adult{booking.adults === 1 ? "" : "s"} · {booking.children} child{booking.children === 1 ? "" : "ren"}
                   </div>
+                </div>
+
+                <div className="mb-4">
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={createGoogleCalendarUrl(booking)} target="_blank" rel="noreferrer">
+                      <CalendarPlus size={14} className="mr-1" /> Add to Google Calendar
+                    </a>
+                  </Button>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-3 text-sm">
