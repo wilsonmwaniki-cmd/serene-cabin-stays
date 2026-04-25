@@ -8,14 +8,16 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Calendar, CalendarDays, Home, Image as ImageIcon, Inbox, LogOut, Package, Tag, Type } from "lucide-react";
+import { Calendar, CalendarDays, Home, Image as ImageIcon, Inbox, LayoutDashboard, LogOut, Package, ReceiptText, Tag, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = { to: string; label: string; icon: typeof Calendar; badgeKey?: "pendingBookings" | "newMessages" };
 
 const items: NavItem[] = [
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/bookings", label: "Bookings", icon: Calendar, badgeKey: "pendingBookings" },
   { to: "/admin/calendar", label: "Calendar", icon: CalendarDays },
+  { to: "/admin/expenses", label: "Expenses", icon: ReceiptText },
   { to: "/admin/messages", label: "Messages", icon: Inbox, badgeKey: "newMessages" },
   { to: "/admin/pods", label: "Pods", icon: Home },
   { to: "/admin/addons", label: "Add-ons", icon: Package },

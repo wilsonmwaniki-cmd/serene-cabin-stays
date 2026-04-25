@@ -176,6 +176,45 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount_kes: number
+          business_area: Database["public"]["Enums"]["business_area"]
+          category: string
+          created_at: string
+          description: string
+          expense_date: string
+          id: string
+          notes: string | null
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount_kes: number
+          business_area?: Database["public"]["Enums"]["business_area"]
+          category: string
+          created_at?: string
+          description: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount_kes?: number
+          business_area?: Database["public"]["Enums"]["business_area"]
+          category?: string
+          created_at?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           created_at: string
@@ -409,6 +448,7 @@ export type Database = {
     Enums: {
       addon_pricing_unit: "per_night" | "per_night_per_adult" | "one_time"
       app_role: "admin" | "moderator" | "user"
+      business_area: "cabins" | "restaurant" | "shared"
       booking_status: "pending" | "confirmed" | "cancelled"
       message_status: "new" | "read" | "replied" | "archived"
       promo_code_kind: "discount" | "affiliate"
@@ -542,6 +582,7 @@ export const Constants = {
     Enums: {
       addon_pricing_unit: ["per_night", "per_night_per_adult", "one_time"],
       app_role: ["admin", "moderator", "user"],
+      business_area: ["cabins", "restaurant", "shared"],
       booking_status: ["pending", "confirmed", "cancelled"],
       message_status: ["new", "read", "replied", "archived"],
       promo_code_kind: ["discount", "affiliate"],

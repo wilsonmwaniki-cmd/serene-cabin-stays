@@ -1,3 +1,3 @@
 import { Navigate } from "react-router-dom";
-const Admin = () => <Navigate to="/admin/bookings" replace />;
+const Admin = () => <Navigate to="/admin/dashboard" replace />;
 export default Admin;
