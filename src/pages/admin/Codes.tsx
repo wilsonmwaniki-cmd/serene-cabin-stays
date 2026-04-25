@@ -27,6 +27,10 @@ const useAllPromoCodes = () =>
     },
   });
 
+const FieldNote = ({ children }: { children: React.ReactNode }) => (
+  <p className="mt-1 text-xs text-muted-foreground">{children}</p>
+);
+
 const PromoCodeRow = ({ promo }: { promo: PromoCode }) => {
   const qc = useQueryClient();
   const [draft, setDraft] = useState({
@@ -94,15 +98,17 @@ const PromoCodeRow = ({ promo }: { promo: PromoCode }) => {
 
       <div className="grid md:grid-cols-3 gap-3">
         <div>
-          <Label>Code</Label>
+          <Label>Code guests enter</Label>
           <Input value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} />
+          <FieldNote>Example: WELCOME10 or AGENTLERA.</FieldNote>
         </div>
         <div>
-          <Label>Label</Label>
+          <Label>Internal name</Label>
           <Input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
+          <FieldNote>This helps you remember what the code is for.</FieldNote>
         </div>
         <div>
-          <Label>Type</Label>
+          <Label>Code type</Label>
           <Select value={draft.kind} onValueChange={(value) => setDraft({ ...draft, kind: value as PromoCode["kind"] })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -110,9 +116,10 @@ const PromoCodeRow = ({ promo }: { promo: PromoCode }) => {
               <SelectItem value="affiliate">Affiliate</SelectItem>
             </SelectContent>
           </Select>
+          <FieldNote>Use discount for an offer, affiliate for a partner or referrer.</FieldNote>
         </div>
         <div>
-          <Label>Discount style</Label>
+          <Label>How the code changes the price</Label>
           <Select value={draft.discount_type} onValueChange={(value) => setDraft({ ...draft, discount_type: value as PromoCode["discount_type"] })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -120,9 +127,10 @@ const PromoCodeRow = ({ promo }: { promo: PromoCode }) => {
               <SelectItem value="percentage">Percentage</SelectItem>
             </SelectContent>
           </Select>
+          <FieldNote>Choose whether this removes a flat amount or a percentage.</FieldNote>
         </div>
         <div>
-          <Label>{draft.discount_type === "percentage" ? "Percent off" : "Amount off (KES)"}</Label>
+          <Label>{draft.discount_type === "percentage" ? "Percentage off" : "Amount off in KES"}</Label>
           <Input
             type="number"
             value={draft.discount_type === "percentage" ? draft.percent_off : draft.amount_kes}
@@ -132,20 +140,24 @@ const PromoCodeRow = ({ promo }: { promo: PromoCode }) => {
               percent_off: draft.discount_type === "percentage" ? Number(e.target.value) : draft.percent_off,
             })}
           />
+          <FieldNote>{draft.discount_type === "percentage" ? "Example: enter 10 for 10% off." : "Example: enter 500 to remove KES 500."}</FieldNote>
         </div>
         <div>
-          <Label>Starts on</Label>
+          <Label>Start date</Label>
           <Input type="date" value={draft.starts_at} onChange={(e) => setDraft({ ...draft, starts_at: e.target.value })} />
+          <FieldNote>Leave blank if it should work immediately.</FieldNote>
         </div>
         <div>
-          <Label>Ends on</Label>
+          <Label>End date</Label>
           <Input type="date" value={draft.ends_at} onChange={(e) => setDraft({ ...draft, ends_at: e.target.value })} />
+          <FieldNote>Leave blank if it should stay active until you switch it off.</FieldNote>
         </div>
       </div>
 
       <div>
-        <Label>Description</Label>
+        <Label>Notes</Label>
         <Textarea rows={2} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+        <FieldNote>This is just for you. Guests do not need to see it.</FieldNote>
       </div>
 
       <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
@@ -211,42 +223,77 @@ const AdminCodes = () => {
       <div className="mb-8">
         <p className="text-xs uppercase tracking-[0.3em] text-ember mb-2">Offers</p>
         <h1 className="font-display text-3xl md:text-4xl text-sage-deep">Discount & affiliate codes</h1>
+        <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
+          Create codes guests can enter during booking. You can use them for discounts or to track partner and affiliate bookings.
+        </p>
       </div>
 
       <section className="border border-dashed border-border p-5 mb-6 bg-bone/30">
         <h2 className="font-display text-lg text-sage-deep mb-3">New code</h2>
         <div className="grid md:grid-cols-3 gap-3 mb-3">
-          <Input placeholder="CODE2026" value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} />
-          <Input placeholder="Weekend launch offer" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
-          <Select value={draft.kind} onValueChange={(value) => setDraft({ ...draft, kind: value as PromoCode["kind"] })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="discount">Discount</SelectItem>
-              <SelectItem value="affiliate">Affiliate</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={draft.discount_type} onValueChange={(value) => setDraft({ ...draft, discount_type: value as PromoCode["discount_type"] })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="fixed">Fixed amount</SelectItem>
-              <SelectItem value="percentage">Percentage</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            type="number"
-            placeholder={draft.discount_type === "percentage" ? "Percent off" : "Amount off (KES)"}
-            value={draft.discount_type === "percentage" ? draft.percent_off : draft.amount_kes}
-            onChange={(e) => setDraft({
-              ...draft,
-              amount_kes: draft.discount_type === "fixed" ? Number(e.target.value) : draft.amount_kes,
-              percent_off: draft.discount_type === "percentage" ? Number(e.target.value) : draft.percent_off,
-            })}
-          />
-          <Input type="date" value={draft.starts_at} onChange={(e) => setDraft({ ...draft, starts_at: e.target.value })} />
+          <div>
+            <Label>Code guests enter</Label>
+            <Input placeholder="CODE2026" value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} />
+            <FieldNote>Example: WELCOME10 or AGENTLERA.</FieldNote>
+          </div>
+          <div>
+            <Label>Internal name</Label>
+            <Input placeholder="Weekend launch offer" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
+            <FieldNote>This helps you recognise the code later.</FieldNote>
+          </div>
+          <div>
+            <Label>Code type</Label>
+            <Select value={draft.kind} onValueChange={(value) => setDraft({ ...draft, kind: value as PromoCode["kind"] })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="discount">Discount</SelectItem>
+                <SelectItem value="affiliate">Affiliate</SelectItem>
+              </SelectContent>
+            </Select>
+            <FieldNote>Use affiliate if you want to track partner bookings.</FieldNote>
+          </div>
+          <div>
+            <Label>How the code changes the price</Label>
+            <Select value={draft.discount_type} onValueChange={(value) => setDraft({ ...draft, discount_type: value as PromoCode["discount_type"] })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fixed">Fixed amount</SelectItem>
+                <SelectItem value="percentage">Percentage</SelectItem>
+              </SelectContent>
+            </Select>
+            <FieldNote>Pick flat amount or percentage.</FieldNote>
+          </div>
+          <div>
+            <Label>{draft.discount_type === "percentage" ? "Percentage off" : "Amount off in KES"}</Label>
+            <Input
+              type="number"
+              placeholder={draft.discount_type === "percentage" ? "Example: 10" : "Example: 500"}
+              value={draft.discount_type === "percentage" ? draft.percent_off : draft.amount_kes}
+              onChange={(e) => setDraft({
+                ...draft,
+                amount_kes: draft.discount_type === "fixed" ? Number(e.target.value) : draft.amount_kes,
+                percent_off: draft.discount_type === "percentage" ? Number(e.target.value) : draft.percent_off,
+              })}
+            />
+            <FieldNote>{draft.discount_type === "percentage" ? "Enter the percent only." : "Enter how many Kenya shillings to remove."}</FieldNote>
+          </div>
+          <div>
+            <Label>Start date</Label>
+            <Input type="date" value={draft.starts_at} onChange={(e) => setDraft({ ...draft, starts_at: e.target.value })} />
+            <FieldNote>Leave blank if it should start now.</FieldNote>
+          </div>
         </div>
         <div className="grid md:grid-cols-[1fr_220px] gap-3 mb-3">
-          <Textarea placeholder="Description" rows={2} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-          <Input type="date" value={draft.ends_at} onChange={(e) => setDraft({ ...draft, ends_at: e.target.value })} />
+          <div>
+            <Label>Notes</Label>
+            <Textarea placeholder="What this code is for" rows={2} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+            <FieldNote>This is optional and helps you remember the purpose of the code.</FieldNote>
+          </div>
+          <div>
+            <Label>End date</Label>
+            <Input type="date" value={draft.ends_at} onChange={(e) => setDraft({ ...draft, ends_at: e.target.value })} />
+            <FieldNote>Leave blank if there is no end date.</FieldNote>
+          </div>
         </div>
         <Button onClick={create} disabled={creating}><Plus size={14} className="mr-1" /> Create code</Button>
       </section>
