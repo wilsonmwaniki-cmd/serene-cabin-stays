@@ -169,11 +169,27 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const discountKes = pricing.discountKes;
   const grandTotal = pricing.totalKes;
 
+  useEffect(() => {
+    if (nights <= 1 && appliedPromo) {
+      setAppliedPromo(null);
+    }
+  }, [nights, appliedPromo]);
+
   const applyPromoCode = async () => {
     const normalizedCode = promoInput.trim().toUpperCase();
     if (!normalizedCode) {
       setAppliedPromo(null);
       toast({ title: "Code removed", description: "No code is currently applied." });
+      return;
+    }
+
+    if (nights <= 1) {
+      setAppliedPromo(null);
+      toast({
+        title: "Code not available",
+        description: "Discount and affiliate codes only apply to stays of 2+ nights.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -488,11 +504,12 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
                 className="w-full bg-bone border border-border px-3 py-2 text-sm outline-none"
                 placeholder="Enter code"
               />
+              <p className="mt-1 text-xs text-muted-foreground">Codes only work for stays of 2 nights or more.</p>
             </div>
             <button
               type="button"
               onClick={applyPromoCode}
-              disabled={applyingPromo}
+              disabled={applyingPromo || nights <= 1}
               className="h-10 px-4 bg-sage-deep hover:bg-sage text-bone text-sm transition-colors disabled:opacity-50"
             >
               {applyingPromo ? "Checking…" : "Apply"}

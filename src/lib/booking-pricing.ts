@@ -52,8 +52,8 @@ export const calcAddonLineTotal = (
   }
 };
 
-export const calcPromoDiscount = (subtotalKes: number, promo: AppliedPromoCode | null) => {
-  if (!promo || subtotalKes <= 0) return 0;
+export const calcPromoDiscount = (subtotalKes: number, promo: AppliedPromoCode | null, nights: number) => {
+  if (!promo || subtotalKes <= 0 || nights <= 1) return 0;
   if (promo.discount_type === "percentage") {
     return Math.min(subtotalKes, Math.round(subtotalKes * ((promo.percent_off ?? 0) / 100)));
   }
@@ -87,7 +87,7 @@ export const calculateBookingPricing = ({
     0,
   );
   const subtotalKes = adultsSubtotal + childrenSubtotal + surchargeSubtotal + addonsSubtotal;
-  const discountKes = calcPromoDiscount(subtotalKes, promo);
+  const discountKes = calcPromoDiscount(subtotalKes, promo, nights);
 
   return {
     nightlyRate,
