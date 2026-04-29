@@ -21,9 +21,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   type AppliedPromoCode,
-  SINGLE_NIGHT_EXCLUDED_ADDONS,
-  SINGLE_NIGHT_RATE_KES,
-  MULTI_NIGHT_RATE_KES,
   calculateBookingPricing,
   calcAddonLineTotal,
 } from "@/lib/booking-pricing";
@@ -101,7 +98,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const maxBookingDate = new Date(today);
   maxBookingDate.setDate(maxBookingDate.getDate() + 365);
   const maxCheckInDate = new Date(today);
-  maxCheckInDate.setDate(maxCheckInDate.getDate() + 364);
+  maxCheckInDate.setDate(maxCheckInDate.getDate() + 363);
   const minCheckIn = format(today, "yyyy-MM-dd");
   const maxCheckIn = format(maxCheckInDate, "yyyy-MM-dd");
   const maxCheckOut = format(maxBookingDate, "yyyy-MM-dd");
@@ -109,8 +106,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [params] = useSearchParams();
   const [podId, setPodId] = useState(defaultPodId ?? pods[0]?.id ?? "");
   const [checkIn, setCheckIn] = useState(params.get("in") ?? format(new Date(Date.now() + 86400000), "yyyy-MM-dd"));
-  const [checkOut, setCheckOut] = useState(params.get("out") ?? format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd"));
-  const minCheckOut = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
+  const [checkOut, setCheckOut] = useState(params.get("out") ?? format(new Date(Date.now() + 3 * 86400000), "yyyy-MM-dd"));
+  const minCheckOut = format(new Date(new Date(checkIn).getTime() + 2 * 86400000), "yyyy-MM-dd");
   const [adults, setAdults] = useState(Number(params.get("adults") ?? 2));
   const [childrenUnder12Count, setChildrenUnder12Count] = useState(Number(params.get("children") ?? 0));
   const [children12PlusCount, setChildren12PlusCount] = useState(Number(params.get("children12plus") ?? 0));
@@ -135,9 +132,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const minimumRooms = Math.max(1, Math.ceil(totalGuests / 2));
 
   useEffect(() => {
-    const nextDay = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
-    if (checkOut <= checkIn) {
-      setCheckOut(nextDay > maxCheckOut ? maxCheckOut : nextDay);
+    const minimumStayEnd = format(new Date(new Date(checkIn).getTime() + 2 * 86400000), "yyyy-MM-dd");
+    if (checkOut < minimumStayEnd) {
+      setCheckOut(minimumStayEnd > maxCheckOut ? maxCheckOut : minimumStayEnd);
     }
   }, [checkIn, checkOut, maxCheckOut]);
 
@@ -166,10 +163,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
   const enoughUnits = availability ? availability.available >= rooms : false;
 
-  const visibleAddons = useMemo(
-    () => addons.filter((a) => !(nights === 1 && SINGLE_NIGHT_EXCLUDED_ADDONS.has(a.slug))),
-    [addons, nights],
-  );
+  const visibleAddons = useMemo(() => addons, [addons]);
 
   const chosenAddons = useMemo(
     () => visibleAddons.filter((a) => selectedAddons[a.id]),
@@ -204,7 +198,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const grandTotal = pricing.totalKes;
 
   useEffect(() => {
-    if (nights <= 1 && appliedPromo) {
+    if (nights < 2 && appliedPromo) {
       setAppliedPromo(null);
     }
   }, [nights, appliedPromo]);
@@ -217,11 +211,11 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       return;
     }
 
-    if (nights <= 1) {
+    if (nights < 2) {
       setAppliedPromo(null);
       toast({
         title: "Code not available",
-        description: "Discount and affiliate codes only apply to stays of 2+ nights.",
+        description: "Codes only apply to stays of 2 nights or more.",
         variant: "destructive",
       });
       return;
@@ -295,10 +289,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       });
       return;
     }
-    if (checkOut <= checkIn || checkOut > maxCheckOut) {
+    if (checkOut < minCheckOut || checkOut > maxCheckOut) {
       toast({
         title: "Check-out date not allowed",
-        description: "Please choose a valid check-out date within the next 12 months.",
+        description: "Please choose a check-out date at least 2 nights after check-in.",
         variant: "destructive",
       });
       return;
@@ -480,6 +474,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       <p className="text-xs text-muted-foreground">
         Booking note: each cabin holds a maximum of 2 guests. {totalGuests} guest{totalGuests === 1 ? "" : "s"} currently require {minimumRooms} room{minimumRooms === 1 ? "" : "s"}.
       </p>
+      <p className="text-xs text-muted-foreground">Minimum stay: 2 nights.</p>
 
       <div className="border-l-2 border-ember pl-4 py-2 bg-linen/40 text-sm flex items-center gap-2 min-h-[44px]">
         {checking ? (
@@ -501,11 +496,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         <div className="border border-border bg-bone">
           <div className="px-4 py-3 border-b border-border">
             <h4 className="font-display text-lg text-sage-deep">Extra Services</h4>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {nights === 1
-                ? "Bed & breakfast is included for single-night stays. Full meals available on stays of 2+ nights."
-                : "Optional add-ons to enhance your stay."}
-            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Optional add-ons to enhance your stay.</p>
           </div>
           <ul className="divide-y divide-border">
             {visibleAddons.map((a) => {
@@ -572,9 +563,6 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
             <span>KES {surchargeSubtotal.toLocaleString()}</span>
           </div>
         )}
-        {nights > 1 && pod?.slug?.startsWith("glamping-pod") && (
-          <div className="text-xs text-ember">Multi-night rate applied (saved KES {Math.round((SINGLE_NIGHT_RATE_KES - MULTI_NIGHT_RATE_KES) * nights * (billableGuests + childrenUnder12Count * 0.5)).toLocaleString()})</div>
-        )}
         {addonsTotal > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Add-ons</span>
@@ -593,12 +581,12 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
                 className="w-full bg-bone border border-border px-3 py-2 text-sm outline-none"
                 placeholder="Enter code"
               />
-              <p className="mt-1 text-xs text-muted-foreground">Codes only work for stays of 2 nights or more.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Codes work on stays of 2 nights or more.</p>
             </div>
             <button
               type="button"
               onClick={applyPromoCode}
-              disabled={applyingPromo || nights <= 1}
+              disabled={applyingPromo || nights < 2}
               className="h-10 px-4 bg-sage-deep hover:bg-sage text-bone text-sm transition-colors disabled:opacity-50"
             >
               {applyingPromo ? "Checking…" : "Apply"}
@@ -658,7 +646,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
       <button
         type="submit"
-        disabled={submitting || !enoughUnits || nights <= 0 || !waiverAccepted}
+        disabled={submitting || !enoughUnits || nights < 2 || !waiverAccepted}
         className="w-full bg-sage-deep hover:bg-sage text-bone py-4 text-sm uppercase tracking-[0.2em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {submitting ? "Sending…" : "Request to Book"}
