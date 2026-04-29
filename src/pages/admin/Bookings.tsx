@@ -75,7 +75,8 @@ const AdminBookings = () => {
       qc.setQueryData(["admin_bookings"], previousBookings);
       qc.setQueryData(["admin_counts"], previousCounts);
       const message = err instanceof Error ? err.message : "Failed";
-      toast({ title: "Error", description: message, variant: "destructive" });
+      const title = message.includes("room(s) left for those dates") ? "Cannot approve booking" : "Error";
+      toast({ title, description: message, variant: "destructive" });
     } finally {
       qc.invalidateQueries({ queryKey: ["admin_bookings"] });
       qc.invalidateQueries({ queryKey: ["admin_counts"] });

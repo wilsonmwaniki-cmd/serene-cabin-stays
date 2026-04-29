@@ -342,7 +342,11 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       });
     if (error) {
       setSubmitting(false);
-      toast({ title: "Could not submit", description: error?.message ?? "Please try again.", variant: "destructive" });
+      const description =
+        error?.message?.includes("room(s) left for those dates")
+          ? error.message
+          : error?.message ?? "Please try again.";
+      toast({ title: "Could not submit", description, variant: "destructive" });
       return;
     }
 
