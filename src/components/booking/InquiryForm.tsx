@@ -6,9 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { sendEmail } from "@/lib/send-email";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Check, AlertCircle } from "lucide-react";
+import { Loader2, Check, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
 import { useAddons, pricingUnitLabel } from "@/hooks/useAddons";
 import { format as fmtDate } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   type AppliedPromoCode,
   SINGLE_NIGHT_EXCLUDED_ADDONS,
@@ -126,6 +128,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [applyingPromo, setApplyingPromo] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromoCode | null>(null);
   const { data: addons = [] } = useAddons();
+  const checkInDate = new Date(checkIn);
+  const checkOutDate = new Date(checkOut);
 
   useEffect(() => {
     const nextDay = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
@@ -400,24 +404,38 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <input type="number" min={1} max={5} value={rooms} onChange={(e) => setRooms(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
         </Field>
         <Field label="Check In">
-          <input
-            type="date"
-            value={checkIn}
-            min={minCheckIn}
-            max={maxCheckIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-            className="w-full bg-transparent font-display text-lg outline-none"
-          />
+          <Popover>
+            <PopoverTrigger className="flex w-full items-center justify-between gap-3 bg-transparent font-display text-lg outline-none text-left">
+              <span>{format(checkInDate, "dd/MM/yyyy")}</span>
+              <CalendarIcon size={16} className="text-muted-foreground" />
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-auto">
+              <Calendar
+                mode="single"
+                selected={checkInDate}
+                onSelect={(date) => date && setCheckIn(format(date, "yyyy-MM-dd"))}
+                disabled={(date) => date < today || format(date, "yyyy-MM-dd") > maxCheckIn}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </Field>
         <Field label="Check Out">
-          <input
-            type="date"
-            value={checkOut}
-            min={minCheckOut}
-            max={maxCheckOut}
-            onChange={(e) => setCheckOut(e.target.value)}
-            className="w-full bg-transparent font-display text-lg outline-none"
-          />
+          <Popover>
+            <PopoverTrigger className="flex w-full items-center justify-between gap-3 bg-transparent font-display text-lg outline-none text-left">
+              <span>{format(checkOutDate, "dd/MM/yyyy")}</span>
+              <CalendarIcon size={16} className="text-muted-foreground" />
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-auto">
+              <Calendar
+                mode="single"
+                selected={checkOutDate}
+                onSelect={(date) => date && setCheckOut(format(date, "yyyy-MM-dd"))}
+                disabled={(date) => format(date, "yyyy-MM-dd") < minCheckOut || format(date, "yyyy-MM-dd") > maxCheckOut}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </Field>
         <Field label="Adults">
           <input type="number" min={1} max={10} value={adults} onChange={(e) => setAdults(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />

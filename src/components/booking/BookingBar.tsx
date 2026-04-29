@@ -132,7 +132,7 @@ const DateField = ({ label, value, onChange, disabled }: { label: string; value:
     </div>
     <Popover>
       <PopoverTrigger className="text-left font-display text-lg w-full">
-        {format(value, "dd MMM yyyy")}
+        {format(value, "dd/MM/yyyy")}
       </PopoverTrigger>
       <PopoverContent className="p-0 w-auto">
         <Calendar mode="single" selected={value} onSelect={(d) => d && onChange(d)} disabled={disabled} initialFocus />
