@@ -27,6 +27,10 @@ const todayPlus = (days: number) => {
   return d;
 };
 
+const MAX_BOOKING_WINDOW_DAYS = 365;
+const maxBookDate = todayPlus(MAX_BOOKING_WINDOW_DAYS);
+const maxCheckInDate = todayPlus(MAX_BOOKING_WINDOW_DAYS - 1);
+
 export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
   const navigate = useNavigate();
   const [checkIn, setCheckIn] = useState<Date>(todayPlus(1));
@@ -57,8 +61,25 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
           : "border border-border bg-card md:grid-cols-[1fr_1fr_1fr_1fr_auto]"
       )}
     >
-      <DateField label="Check In" value={checkIn} onChange={(d) => { setCheckIn(d); if (d >= checkOut) setCheckOut(todayPlus(((d.getTime() - todayPlus(0).getTime()) / 86400000) + 1)); }} disabled={(d) => d < todayPlus(0)} />
-      <DateField label="Check Out" value={checkOut} onChange={setCheckOut} disabled={(d) => d <= checkIn} />
+      <DateField
+        label="Check In"
+        value={checkIn}
+        onChange={(d) => {
+          setCheckIn(d);
+          if (d >= checkOut) {
+            const nextDay = new Date(d);
+            nextDay.setDate(nextDay.getDate() + 1);
+            setCheckOut(nextDay > maxBookDate ? maxBookDate : nextDay);
+          }
+        }}
+        disabled={(d) => d < todayPlus(0) || d > maxCheckInDate}
+      />
+      <DateField
+        label="Check Out"
+        value={checkOut}
+        onChange={setCheckOut}
+        disabled={(d) => d <= checkIn || d > maxBookDate}
+      />
 
       <Field label="Rooms" icon={<BedDouble size={16} />}>
         <Select value={String(rooms)} onValueChange={(v) => setRooms(Number(v))}>

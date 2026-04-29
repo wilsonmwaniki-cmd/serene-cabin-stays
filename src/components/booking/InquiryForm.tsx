@@ -94,6 +94,17 @@ const WAIVER_TERMS = [
 ];
 
 export const InquiryForm = ({ pods, defaultPodId }: Props) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const maxBookingDate = new Date(today);
+  maxBookingDate.setDate(maxBookingDate.getDate() + 365);
+  const maxCheckInDate = new Date(today);
+  maxCheckInDate.setDate(maxCheckInDate.getDate() + 364);
+  const minCheckIn = format(today, "yyyy-MM-dd");
+  const maxCheckIn = format(maxCheckInDate, "yyyy-MM-dd");
+  const minCheckOut = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
+  const maxCheckOut = format(maxBookingDate, "yyyy-MM-dd");
+
   const [params] = useSearchParams();
   const [podId, setPodId] = useState(defaultPodId ?? pods[0]?.id ?? "");
   const [checkIn, setCheckIn] = useState(params.get("in") ?? format(new Date(Date.now() + 86400000), "yyyy-MM-dd"));
@@ -115,6 +126,13 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [applyingPromo, setApplyingPromo] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromoCode | null>(null);
   const { data: addons = [] } = useAddons();
+
+  useEffect(() => {
+    const nextDay = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
+    if (checkOut <= checkIn) {
+      setCheckOut(nextDay > maxCheckOut ? maxCheckOut : nextDay);
+    }
+  }, [checkIn, checkOut, maxCheckOut]);
 
   useEffect(() => {
     if (!podId || !checkIn || !checkOut) return;
@@ -253,6 +271,22 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     setName(normalizedName);
     setEmail(normalizedEmail);
     setPhone(normalizedPhone);
+    if (checkIn < minCheckIn || checkIn > maxCheckIn) {
+      toast({
+        title: "Check-in date not allowed",
+        description: "Bookings can be made from today up to 1 year in advance.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (checkOut <= checkIn || checkOut > maxCheckOut) {
+      toast({
+        title: "Check-out date not allowed",
+        description: "Please choose a valid check-out date within the next 12 months.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!pod) return;
     if (!enoughUnits) {
       toast({ title: "Not enough availability", description: "Please choose different dates or fewer rooms.", variant: "destructive" });
@@ -365,31 +399,23 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         <Field label="Rooms">
           <input type="number" min={1} max={5} value={rooms} onChange={(e) => setRooms(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
         </Field>
-        <Field label="Check In (dd/mm/yyyy)">
+        <Field label="Check In">
           <input
-            type="text"
-            inputMode="numeric"
-            placeholder="dd/mm/yyyy"
-            value={checkIn ? format(new Date(checkIn), "dd/MM/yyyy") : ""}
-            onChange={(e) => {
-              const v = e.target.value.trim();
-              const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-              if (m) setCheckIn(`${m[3]}-${m[2]}-${m[1]}`);
-            }}
+            type="date"
+            value={checkIn}
+            min={minCheckIn}
+            max={maxCheckIn}
+            onChange={(e) => setCheckIn(e.target.value)}
             className="w-full bg-transparent font-display text-lg outline-none"
           />
         </Field>
-        <Field label="Check Out (dd/mm/yyyy)">
+        <Field label="Check Out">
           <input
-            type="text"
-            inputMode="numeric"
-            placeholder="dd/mm/yyyy"
-            value={checkOut ? format(new Date(checkOut), "dd/MM/yyyy") : ""}
-            onChange={(e) => {
-              const v = e.target.value.trim();
-              const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-              if (m) setCheckOut(`${m[3]}-${m[2]}-${m[1]}`);
-            }}
+            type="date"
+            value={checkOut}
+            min={minCheckOut}
+            max={maxCheckOut}
+            onChange={(e) => setCheckOut(e.target.value)}
             className="w-full bg-transparent font-display text-lg outline-none"
           />
         </Field>
@@ -414,6 +440,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <span className="text-muted-foreground">Choose your dates to see availability.</span>
         )}
       </div>
+      <p className="text-xs text-muted-foreground">You can book from today up to 12 months in advance.</p>
 
       {/* Add-ons */}
       {visibleAddons.length > 0 && (
