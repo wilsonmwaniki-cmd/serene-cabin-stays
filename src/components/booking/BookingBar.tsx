@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar as CalendarIcon, Users, BedDouble } from "lucide-react";
 import { format } from "date-fns";
@@ -40,6 +40,14 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
   const [adults, setAdults] = useState(2);
   const [childrenUnder12, setChildrenUnder12] = useState(0);
   const [children12Plus, setChildren12Plus] = useState(0);
+  const totalGuests = adults + childrenUnder12 + children12Plus;
+  const minimumRooms = Math.max(1, Math.ceil(totalGuests / 2));
+
+  useEffect(() => {
+    if (rooms < minimumRooms) {
+      setRooms(minimumRooms);
+    }
+  }, [rooms, minimumRooms]);
 
   const submit = () => {
     const q: BookingQuery = { checkIn, checkOut, rooms, adults, childrenUnder12, children12Plus };
@@ -85,16 +93,17 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
       />
 
       <Field label="Rooms" icon={<BedDouble size={16} />}>
-        <Select value={String(rooms)} onValueChange={(v) => setRooms(Number(v))}>
+        <Select value={String(rooms)} onValueChange={(v) => setRooms(Math.max(minimumRooms, Number(v)))}>
           <SelectTrigger className="border-0 bg-transparent h-auto p-0 font-display text-lg shadow-none focus:ring-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {[1, 2, 3, 4, 5].map((n) => (
+            {Array.from({ length: 10 }, (_, i) => i + 1).filter((n) => n >= minimumRooms).map((n) => (
               <SelectItem key={n} value={String(n)}>{n} {n === 1 ? "Room" : "Rooms"}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <p className="mt-1 text-xs text-muted-foreground">2 guests per cabin. {totalGuests} guest{totalGuests === 1 ? "" : "s"} need {minimumRooms} room{minimumRooms === 1 ? "" : "s"} minimum.</p>
       </Field>
 
       <Field label="Guests" icon={<Users size={16} />}>

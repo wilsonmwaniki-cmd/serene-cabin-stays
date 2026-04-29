@@ -131,6 +131,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const { data: addons = [] } = useAddons();
   const checkInDate = new Date(checkIn);
   const checkOutDate = new Date(checkOut);
+  const totalGuests = adults + childrenUnder12Count + children12PlusCount;
+  const minimumRooms = Math.max(1, Math.ceil(totalGuests / 2));
 
   useEffect(() => {
     const nextDay = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
@@ -138,6 +140,12 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       setCheckOut(nextDay > maxCheckOut ? maxCheckOut : nextDay);
     }
   }, [checkIn, checkOut, maxCheckOut]);
+
+  useEffect(() => {
+    if (rooms < minimumRooms) {
+      setRooms(minimumRooms);
+    }
+  }, [rooms, minimumRooms]);
 
   useEffect(() => {
     if (!podId || !checkIn || !checkOut) return;
@@ -296,6 +304,14 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       return;
     }
     if (!pod) return;
+    if (rooms < minimumRooms) {
+      toast({
+        title: "More rooms needed",
+        description: `Each cabin holds up to 2 guests, so ${totalGuests} guests need at least ${minimumRooms} room${minimumRooms === 1 ? "" : "s"}.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (!enoughUnits) {
       toast({ title: "Not enough availability", description: "Please choose different dates or fewer rooms.", variant: "destructive" });
       return;
@@ -408,7 +424,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           </select>
         </Field>
         <Field label="Rooms">
-          <input type="number" min={1} max={5} value={rooms} onChange={(e) => setRooms(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
+          <input type="number" min={minimumRooms} max={10} value={rooms} onChange={(e) => setRooms(Math.max(minimumRooms, Number(e.target.value) || minimumRooms))} className="w-full bg-transparent font-display text-lg outline-none" />
         </Field>
         <Field label="Check In">
           <Popover>
@@ -457,6 +473,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       <p className="text-xs text-muted-foreground">
         Pricing note: children under 12 are half price. Guests aged 12 and above are charged at the full rate.
       </p>
+      <p className="text-xs text-muted-foreground">
+        Booking note: each cabin holds a maximum of 2 guests. {totalGuests} guest{totalGuests === 1 ? "" : "s"} currently require {minimumRooms} room{minimumRooms === 1 ? "" : "s"}.
+      </p>
 
       <div className="border-l-2 border-ember pl-4 py-2 bg-linen/40 text-sm flex items-center gap-2 min-h-[44px]">
         {checking ? (
@@ -487,7 +506,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <ul className="divide-y divide-border">
             {visibleAddons.map((a) => {
               const checked = !!selectedAddons[a.id];
-              const lineTotal = calcAddonLineTotal(a, Math.max(nights, 1), rooms, adults);
+              const lineTotal = calcAddonLineTotal(a, Math.max(nights, 1), rooms, billableGuests);
               return (
                 <li key={a.id}>
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-linen/40 transition-colors">
