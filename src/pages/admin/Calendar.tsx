@@ -120,7 +120,7 @@ const AdminCalendar = () => {
                     </p>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {booking.rooms} room{booking.rooms === 1 ? "" : "s"} · {booking.adults} adult{booking.adults === 1 ? "" : "s"} · {booking.children} child{booking.children === 1 ? "" : "ren"}
+                    {booking.rooms} room{booking.rooms === 1 ? "" : "s"} · {booking.adults} adult{booking.adults === 1 ? "" : "s"} · {booking.children} child{booking.children === 1 ? "" : "ren"} under 12 · {booking.children_12_plus ?? 0} guest{(booking.children_12_plus ?? 0) === 1 ? "" : "s"} 12+
                   </div>
                 </div>
 

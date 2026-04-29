@@ -26,10 +26,13 @@ const renderTemplate = (templateName, data = {}) => {
   const promoCode = escapeHtml(data.promoCode || "");
   const adults = Number(data.adults ?? 0);
   const children = Number(data.children ?? 0);
+  const childrenUnder12 = Number(data.childrenUnder12 ?? data.children ?? 0);
+  const children12Plus = Number(data.children12Plus ?? 0);
   const rooms = Number(data.rooms ?? 1);
   const subtotalKes = Number(data.subtotalKes ?? 0);
   const discountKes = Number(data.discountKes ?? 0);
   const totalKes = Number(data.totalKes ?? 0);
+  const guestSummary = `${adults} adults · ${childrenUnder12} children under 12 · ${children12Plus} guests aged 12+ · ${rooms} room(s)`;
 
   const pricingHtml = totalKes > 0
     ? `
@@ -47,7 +50,7 @@ const renderTemplate = (templateName, data = {}) => {
         html: `
           <h2>Karibu, ${name}.</h2>
           <p>Your stay request has reached us. We'll confirm the details personally within a few hours.</p>
-          <p><strong>${podName}</strong><br>${checkIn} → ${checkOut}<br>${adults} adults · ${children} children · ${rooms} room(s)</p>
+          <p><strong>${podName}</strong><br>${checkIn} → ${checkOut}<br>${guestSummary}</p>
           ${pricingHtml}
           <p>Check-in 3pm · Check-out 2pm</p>
         `,
@@ -59,7 +62,7 @@ const renderTemplate = (templateName, data = {}) => {
         html: `
           <h2>New booking inquiry</h2>
           <p><strong>Guest:</strong> ${name}<br><strong>Email:</strong> ${email}<br><strong>Phone:</strong> ${phone}</p>
-          <p><strong>Pod:</strong> ${podName}<br><strong>Dates:</strong> ${checkIn} → ${checkOut}<br><strong>Guests:</strong> ${adults} adults · ${children} children · ${rooms} room(s)</p>
+          <p><strong>Pod:</strong> ${podName}<br><strong>Dates:</strong> ${checkIn} → ${checkOut}<br><strong>Guests:</strong> ${guestSummary}</p>
           ${pricingHtml}
           ${notes ? `<p><strong>Notes:</strong><br>${notes}</p>` : ""}
         `,
@@ -92,7 +95,7 @@ const renderTemplate = (templateName, data = {}) => {
         html: `
           <h2>Karibu sana, ${name}.</h2>
           <p>Your stay at ${SITE_NAME} is confirmed. We can't wait to host you.</p>
-          <p><strong>${podName}</strong><br>${checkIn} → ${checkOut}<br>${adults} adults · ${children} children</p>
+          <p><strong>${podName}</strong><br>${checkIn} → ${checkOut}<br>${guestSummary}</p>
           ${pricingHtml}
           <p><strong>How to pay:</strong> Pay through Till Number ${PAYMENT_TILL}.</p>
           <p>Check-in is from 3pm and check-out by 2pm. If anything changes, just reply to this email.</p>

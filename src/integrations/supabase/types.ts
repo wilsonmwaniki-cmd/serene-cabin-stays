@@ -101,6 +101,7 @@ export type Database = {
           check_in: string
           check_out: string
           children: number
+          children_12_plus: number
           created_at: string
           discount_kes: number | null
           guest_email: string
@@ -122,6 +123,7 @@ export type Database = {
           check_in: string
           check_out: string
           children?: number
+          children_12_plus?: number
           created_at?: string
           discount_kes?: number | null
           guest_email: string
@@ -143,6 +145,7 @@ export type Database = {
           check_in?: string
           check_out?: string
           children?: number
+          children_12_plus?: number
           created_at?: string
           discount_kes?: number | null
           guest_email?: string

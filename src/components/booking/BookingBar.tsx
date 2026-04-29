@@ -12,7 +12,8 @@ export type BookingQuery = {
   checkOut: Date;
   rooms: number;
   adults: number;
-  children: number;
+  childrenUnder12: number;
+  children12Plus: number;
 };
 
 interface Props {
@@ -37,17 +38,19 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
   const [checkOut, setCheckOut] = useState<Date>(todayPlus(2));
   const [rooms, setRooms] = useState(1);
   const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
+  const [childrenUnder12, setChildrenUnder12] = useState(0);
+  const [children12Plus, setChildren12Plus] = useState(0);
 
   const submit = () => {
-    const q: BookingQuery = { checkIn, checkOut, rooms, adults, children };
+    const q: BookingQuery = { checkIn, checkOut, rooms, adults, childrenUnder12, children12Plus };
     if (onSubmit) return onSubmit(q);
     const params = new URLSearchParams({
       in: format(checkIn, "yyyy-MM-dd"),
       out: format(checkOut, "yyyy-MM-dd"),
       rooms: String(rooms),
       adults: String(adults),
-      children: String(children),
+      children: String(childrenUnder12),
+      children12plus: String(children12Plus),
     });
     navigate(`/book?${params.toString()}`);
   };
@@ -97,11 +100,12 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
       <Field label="Guests" icon={<Users size={16} />}>
         <Popover>
           <PopoverTrigger className="text-left font-display text-lg w-full">
-            {adults} Adult{adults !== 1 && "s"}, {children} Child{children !== 1 && "ren"}
+            {adults} Adult{adults !== 1 && "s"}, {childrenUnder12} Child{childrenUnder12 !== 1 && "ren"} under 12, {children12Plus} Guest{children12Plus !== 1 && "s"} 12+
           </PopoverTrigger>
           <PopoverContent className="w-72">
             <Stepper label="Adults" value={adults} onChange={setAdults} min={1} max={10} />
-            <Stepper label="Children" value={children} onChange={setChildren} min={0} max={10} />
+            <Stepper label="Children under 12" value={childrenUnder12} onChange={setChildrenUnder12} min={0} max={10} />
+            <Stepper label="Guests 12+" value={children12Plus} onChange={setChildren12Plus} min={0} max={10} />
           </PopoverContent>
         </Popover>
       </Field>

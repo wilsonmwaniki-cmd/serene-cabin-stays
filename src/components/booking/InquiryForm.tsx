@@ -112,7 +112,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [checkOut, setCheckOut] = useState(params.get("out") ?? format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd"));
   const minCheckOut = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
   const [adults, setAdults] = useState(Number(params.get("adults") ?? 2));
-  const [childrenCount, setChildrenCount] = useState(Number(params.get("children") ?? 0));
+  const [childrenUnder12Count, setChildrenUnder12Count] = useState(Number(params.get("children") ?? 0));
+  const [children12PlusCount, setChildren12PlusCount] = useState(Number(params.get("children12plus") ?? 0));
   const [rooms, setRooms] = useState(Number(params.get("rooms") ?? 1));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -173,18 +174,21 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         pod,
         nights,
         adults,
-        children: childrenCount,
+        childrenUnder12: childrenUnder12Count,
+        children12Plus: children12PlusCount,
         rooms,
         selectedAddons: chosenAddons,
         promo: appliedPromo,
       }),
-    [pod, nights, adults, childrenCount, rooms, chosenAddons, appliedPromo],
+    [pod, nights, adults, childrenUnder12Count, children12PlusCount, rooms, chosenAddons, appliedPromo],
   );
 
   const nightlyRate = pricing.nightlyRate;
   const roomSurcharge = pricing.roomSurcharge;
+  const billableGuests = pricing.billableGuests;
   const adultsSubtotal = pricing.adultsSubtotal;
-  const childrenSubtotal = pricing.childrenSubtotal;
+  const children12PlusSubtotal = pricing.children12PlusSubtotal;
+  const childrenUnder12Subtotal = pricing.childrenUnder12Subtotal;
   const surchargeSubtotal = pricing.surchargeSubtotal;
   const addonsTotal = pricing.addonsSubtotal;
   const subtotalKes = pricing.subtotalKes;
@@ -309,7 +313,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         check_in: checkIn,
         check_out: checkOut,
         adults,
-        children: childrenCount,
+        children: childrenUnder12Count,
+        children_12_plus: children12PlusCount,
         rooms,
         notes: notes.trim() || null,
         subtotal_kes: subtotalKes,
@@ -357,7 +362,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       checkIn: fmt(checkIn),
       checkOut: fmt(checkOut),
       adults,
-      children: childrenCount,
+      children: childrenUnder12Count,
+      childrenUnder12: childrenUnder12Count,
+      children12Plus: children12PlusCount,
       rooms,
       notes: notes.trim() || undefined,
       subtotalKes,
@@ -440,10 +447,16 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         <Field label="Adults">
           <input type="number" min={1} max={10} value={adults} onChange={(e) => setAdults(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
         </Field>
-        <Field label="Children">
-          <input type="number" min={0} max={10} value={childrenCount} onChange={(e) => setChildrenCount(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
+        <Field label="Children Under 12">
+          <input type="number" min={0} max={10} value={childrenUnder12Count} onChange={(e) => setChildrenUnder12Count(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
+        </Field>
+        <Field label="Guests 12+">
+          <input type="number" min={0} max={10} value={children12PlusCount} onChange={(e) => setChildren12PlusCount(Number(e.target.value))} className="w-full bg-transparent font-display text-lg outline-none" />
         </Field>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Pricing note: children under 12 are half price. Guests aged 12 and above are charged at the full rate.
+      </p>
 
       <div className="border-l-2 border-ember pl-4 py-2 bg-linen/40 text-sm flex items-center gap-2 min-h-[44px]">
         {checking ? (
@@ -512,12 +525,20 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           </span>
           <span>KES {adultsSubtotal.toLocaleString()}</span>
         </div>
-        {childrenCount > 0 && (
+        {children12PlusCount > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              Children ≤12 ({childrenCount} × {nights} night{nights !== 1 && "s"} @ KES {(nightlyRate * 0.5).toLocaleString()} — half price)
+              Guests 12+ ({children12PlusCount} × {nights} night{nights !== 1 && "s"} @ KES {nightlyRate.toLocaleString()} — full price)
             </span>
-            <span>KES {childrenSubtotal.toLocaleString()}</span>
+            <span>KES {children12PlusSubtotal.toLocaleString()}</span>
+          </div>
+        )}
+        {childrenUnder12Count > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              Children under 12 ({childrenUnder12Count} × {nights} night{nights !== 1 && "s"} @ KES {(nightlyRate * 0.5).toLocaleString()} — half price)
+            </span>
+            <span>KES {childrenUnder12Subtotal.toLocaleString()}</span>
           </div>
         )}
         {surchargeSubtotal > 0 && (
@@ -529,7 +550,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           </div>
         )}
         {nights > 1 && pod?.slug?.startsWith("glamping-pod") && (
-          <div className="text-xs text-ember">Multi-night rate applied (saved KES {Math.round((SINGLE_NIGHT_RATE_KES - MULTI_NIGHT_RATE_KES) * nights * (adults + childrenCount * 0.5)).toLocaleString()})</div>
+          <div className="text-xs text-ember">Multi-night rate applied (saved KES {Math.round((SINGLE_NIGHT_RATE_KES - MULTI_NIGHT_RATE_KES) * nights * (billableGuests + childrenUnder12Count * 0.5)).toLocaleString()})</div>
         )}
         {addonsTotal > 0 && (
           <div className="flex justify-between">

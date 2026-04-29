@@ -14,6 +14,7 @@ export type AdminBooking = {
   check_out: string;
   adults: number;
   children: number;
+  children_12_plus: number;
   rooms: number;
   notes: string | null;
   status: "pending" | "confirmed" | "cancelled";
@@ -67,7 +68,8 @@ export const useAdminBookings = () =>
               Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000),
             ),
             adults: b.adults,
-            children: b.children,
+            childrenUnder12: b.children,
+            children12Plus: b.children_12_plus ?? 0,
             rooms: b.rooms,
             selectedAddons: (addonMap.get(b.id) ?? []).map((addon) => ({
               price_kes: addon.unit_price_kes,

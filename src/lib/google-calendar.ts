@@ -12,6 +12,7 @@ export const createGoogleCalendarUrl = (booking: Pick<
   | "check_out"
   | "adults"
   | "children"
+  | "children_12_plus"
   | "rooms"
   | "notes"
 >) => {
@@ -21,7 +22,7 @@ export const createGoogleCalendarUrl = (booking: Pick<
     `Email: ${booking.guest_email}`,
     `Phone: ${booking.guest_phone ?? "—"}`,
     `Pod: ${booking.pod_name ?? "—"}`,
-    `Guests: ${booking.adults} adults, ${booking.children} children`,
+    `Guests: ${booking.adults} adults, ${booking.children} children under 12, ${booking.children_12_plus} guests aged 12+`,
     `Rooms: ${booking.rooms}`,
     booking.notes ? `Notes: ${booking.notes}` : null,
   ]

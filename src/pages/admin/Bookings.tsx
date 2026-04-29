@@ -58,6 +58,8 @@ const AdminBookings = () => {
             checkOut: fmtDate(b.check_out),
             adults: b.adults,
             children: b.children,
+            childrenUnder12: b.children,
+            children12Plus: b.children_12_plus ?? 0,
             subtotalKes: b.subtotal_kes ?? b.total_kes ?? 0,
             discountKes: b.discount_kes ?? 0,
             totalKes: b.total_kes ?? 0,
@@ -134,7 +136,9 @@ const AdminBookings = () => {
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-6 text-sm">
               <Field label="Email" value={b.guest_email} />
               <Field label="Phone" value={b.guest_phone ?? "—"} />
-              <Field label="Adults / Children" value={`${b.adults} / ${b.children}`} />
+              <Field label="Adults" value={String(b.adults)} />
+              <Field label="Children Under 12" value={String(b.children)} />
+              <Field label="Guests 12+" value={String(b.children_12_plus ?? 0)} />
               <Field label="Rooms" value={String(b.rooms)} />
             </dl>
             <div className="mt-4 grid md:grid-cols-3 gap-3 text-sm">

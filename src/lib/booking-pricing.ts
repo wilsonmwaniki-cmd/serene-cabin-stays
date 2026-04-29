@@ -39,13 +39,13 @@ export const calcAddonLineTotal = (
   addon: Pick<Addon, "price_kes" | "pricing_unit">,
   nights: number,
   rooms: number,
-  adults: number,
+  billableGuests: number,
 ) => {
   switch (addon.pricing_unit as AddonPricingUnit) {
     case "per_night":
       return addon.price_kes * nights * rooms;
     case "per_night_per_adult":
-      return addon.price_kes * nights * adults;
+      return addon.price_kes * nights * billableGuests;
     case "one_time":
     default:
       return addon.price_kes;
@@ -64,7 +64,8 @@ export const calculateBookingPricing = ({
   pod,
   nights,
   adults,
-  children,
+  childrenUnder12,
+  children12Plus,
   rooms,
   selectedAddons,
   promo,
@@ -72,7 +73,8 @@ export const calculateBookingPricing = ({
   pod: PricingPod | undefined;
   nights: number;
   adults: number;
-  children: number;
+  childrenUnder12: number;
+  children12Plus: number;
   rooms: number;
   selectedAddons: Array<Pick<Addon, "price_kes" | "pricing_unit">>;
   promo: AppliedPromoCode | null;
@@ -80,20 +82,24 @@ export const calculateBookingPricing = ({
   const nightlyRate = effectiveNightlyRate(pod, nights);
   const roomSurcharge = podRoomSurcharge(pod);
   const adultsSubtotal = nightlyRate * adults * nights;
-  const childrenSubtotal = nightlyRate * 0.5 * children * nights;
+  const children12PlusSubtotal = nightlyRate * children12Plus * nights;
+  const childrenUnder12Subtotal = nightlyRate * 0.5 * childrenUnder12 * nights;
   const surchargeSubtotal = roomSurcharge * rooms * nights;
+  const billableGuests = adults + children12Plus;
   const addonsSubtotal = selectedAddons.reduce(
-    (sum, addon) => sum + calcAddonLineTotal(addon, nights, rooms, adults),
+    (sum, addon) => sum + calcAddonLineTotal(addon, nights, rooms, billableGuests),
     0,
   );
-  const subtotalKes = adultsSubtotal + childrenSubtotal + surchargeSubtotal + addonsSubtotal;
+  const subtotalKes = adultsSubtotal + children12PlusSubtotal + childrenUnder12Subtotal + surchargeSubtotal + addonsSubtotal;
   const discountKes = calcPromoDiscount(subtotalKes, promo, nights);
 
   return {
     nightlyRate,
     roomSurcharge,
+    billableGuests,
     adultsSubtotal,
-    childrenSubtotal,
+    children12PlusSubtotal,
+    childrenUnder12Subtotal,
     surchargeSubtotal,
     addonsSubtotal,
     subtotalKes,
