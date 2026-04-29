@@ -102,13 +102,13 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   maxCheckInDate.setDate(maxCheckInDate.getDate() + 364);
   const minCheckIn = format(today, "yyyy-MM-dd");
   const maxCheckIn = format(maxCheckInDate, "yyyy-MM-dd");
-  const minCheckOut = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
   const maxCheckOut = format(maxBookingDate, "yyyy-MM-dd");
 
   const [params] = useSearchParams();
   const [podId, setPodId] = useState(defaultPodId ?? pods[0]?.id ?? "");
   const [checkIn, setCheckIn] = useState(params.get("in") ?? format(new Date(Date.now() + 86400000), "yyyy-MM-dd"));
   const [checkOut, setCheckOut] = useState(params.get("out") ?? format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd"));
+  const minCheckOut = format(new Date(new Date(checkIn).getTime() + 86400000), "yyyy-MM-dd");
   const [adults, setAdults] = useState(Number(params.get("adults") ?? 2));
   const [childrenCount, setChildrenCount] = useState(Number(params.get("children") ?? 0));
   const [rooms, setRooms] = useState(Number(params.get("rooms") ?? 1));
