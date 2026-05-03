@@ -45,6 +45,62 @@ type ParsedLine = {
 const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 const PERIOD_RE = /^[A-Za-z]+, [A-Za-z]+ \d{2} \d{4} - [A-Za-z]+, [A-Za-z]+ \d{2} \d{4}$/;
 
+const installPdfCompatPolyfills = () => {
+  const PromiseWithResolvers = Promise as PromiseConstructor & {
+    withResolvers?: <T>() => {
+      promise: Promise<T>;
+      resolve: (value: T | PromiseLike<T>) => void;
+      reject: (reason?: unknown) => void;
+    };
+  };
+
+  if (typeof PromiseWithResolvers.withResolvers !== "function") {
+    PromiseWithResolvers.withResolvers = function withResolvers<T>() {
+      let resolve!: (value: T | PromiseLike<T>) => void;
+      let reject!: (reason?: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    };
+  }
+
+  if (typeof Array.prototype.at !== "function") {
+    Object.defineProperty(Array.prototype, "at", {
+      value(this: unknown[], index: number) {
+        const normalizedIndex = Math.trunc(index) || 0;
+        const lookupIndex = normalizedIndex < 0 ? this.length + normalizedIndex : normalizedIndex;
+        return this[lookupIndex];
+      },
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  if (typeof Array.prototype.findLast !== "function") {
+    Object.defineProperty(Array.prototype, "findLast", {
+      value<T>(this: T[], predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: unknown) {
+        for (let index = this.length - 1; index >= 0; index -= 1) {
+          const value = this[index];
+          if (predicate.call(thisArg, value, index, this)) return value;
+        }
+        return undefined;
+      },
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  const objectWithHasOwn = Object as typeof Object & {
+    hasOwn?: (target: object, key: PropertyKey) => boolean;
+  };
+
+  if (typeof objectWithHasOwn.hasOwn !== "function") {
+    objectWithHasOwn.hasOwn = (target, key) => Object.prototype.hasOwnProperty.call(target, key);
+  }
+};
+
 const toKes = (value: string) => {
   const normalized = value.replace(/,/g, "").trim();
   if (!normalized) return 0;
@@ -189,6 +245,7 @@ const buildTransactions = (lines: ParsedLine[]) => {
 };
 
 export const parsePaymentStatementPdf = async (file: File): Promise<ParsedStatement> => {
+  installPdfCompatPolyfills();
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
