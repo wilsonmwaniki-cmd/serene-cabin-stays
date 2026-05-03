@@ -218,6 +218,114 @@ export type Database = {
         }
         Relationships: []
       }
+      statement_imports: {
+        Row: {
+          business_area: Database["public"]["Enums"]["business_area"]
+          created_at: string
+          id: string
+          imported_by: string | null
+          notes: string | null
+          original_filename: string
+          source_name: string
+          statement_from: string | null
+          statement_to: string | null
+          transaction_count: number
+          updated_at: string
+        }
+        Insert: {
+          business_area?: Database["public"]["Enums"]["business_area"]
+          created_at?: string
+          id?: string
+          imported_by?: string | null
+          notes?: string | null
+          original_filename: string
+          source_name?: string
+          statement_from?: string | null
+          statement_to?: string | null
+          transaction_count?: number
+          updated_at?: string
+        }
+        Update: {
+          business_area?: Database["public"]["Enums"]["business_area"]
+          created_at?: string
+          id?: string
+          imported_by?: string | null
+          notes?: string | null
+          original_filename?: string
+          source_name?: string
+          statement_from?: string | null
+          statement_to?: string | null
+          transaction_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      statement_transactions: {
+        Row: {
+          account_number: string | null
+          balance_kes: number | null
+          business_area: Database["public"]["Enums"]["business_area"]
+          created_at: string
+          credit_kes: number
+          debit_kes: number
+          description: string
+          entry_kind: Database["public"]["Enums"]["statement_entry_kind"]
+          id: string
+          import_id: string
+          linked_expense_id: string | null
+          raw_text: string | null
+          reference: string | null
+          transaction_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          balance_kes?: number | null
+          business_area?: Database["public"]["Enums"]["business_area"]
+          created_at?: string
+          credit_kes?: number
+          debit_kes?: number
+          description: string
+          entry_kind?: Database["public"]["Enums"]["statement_entry_kind"]
+          id?: string
+          import_id: string
+          linked_expense_id?: string | null
+          raw_text?: string | null
+          reference?: string | null
+          transaction_at: string
+        }
+        Update: {
+          account_number?: string | null
+          balance_kes?: number | null
+          business_area?: Database["public"]["Enums"]["business_area"]
+          created_at?: string
+          credit_kes?: number
+          debit_kes?: number
+          description?: string
+          entry_kind?: Database["public"]["Enums"]["statement_entry_kind"]
+          id?: string
+          import_id?: string
+          linked_expense_id?: string | null
+          raw_text?: string | null
+          reference?: string | null
+          transaction_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_transactions_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "statement_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_linked_expense_id_fkey"
+            columns: ["linked_expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           created_at: string
@@ -456,6 +564,7 @@ export type Database = {
       message_status: "new" | "read" | "replied" | "archived"
       promo_code_kind: "discount" | "affiliate"
       promo_discount_type: "fixed" | "percentage"
+      statement_entry_kind: "income" | "expense" | "transfer" | "reversal" | "balance" | "other"
     }
     CompositeTypes: {
       [_ in never]: never

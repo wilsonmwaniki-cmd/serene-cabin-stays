@@ -5,6 +5,8 @@ import type { Tables } from "@/integrations/supabase/types";
 import { useAdminBookings } from "@/hooks/useAdminBookings";
 
 export type ExpenseItem = Tables<"expenses">;
+export type StatementImportItem = Tables<"statement_imports">;
+export type StatementTransactionItem = Tables<"statement_transactions">;
 
 const monthKey = (value: string) => value.slice(0, 7);
 
@@ -22,13 +24,45 @@ export const useAdminExpenses = () =>
     },
   });
 
+export const useAdminStatementImports = () =>
+  useQuery({
+    queryKey: ["admin_statement_imports"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("statement_imports")
+        .select("*")
+        .order("statement_to", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as StatementImportItem[];
+    },
+  });
+
+export const useAdminStatementTransactions = () =>
+  useQuery({
+    queryKey: ["admin_statement_transactions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("statement_transactions")
+        .select("*")
+        .order("transaction_at", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as StatementTransactionItem[];
+    },
+  });
+
 export const useAdminFinance = () => {
   const bookingsQuery = useAdminBookings();
   const expensesQuery = useAdminExpenses();
+  const statementImportsQuery = useAdminStatementImports();
+  const statementTransactionsQuery = useAdminStatementTransactions();
 
   const summary = useMemo(() => {
     const bookings = bookingsQuery.data ?? [];
     const expenses = expensesQuery.data ?? [];
+    const statementImports = statementImportsQuery.data ?? [];
+    const statementTransactions = statementTransactionsQuery.data ?? [];
 
     const confirmedBookings = bookings.filter((booking) => booking.status === "confirmed");
     const pendingBookings = bookings.filter((booking) => booking.status === "pending");
@@ -42,6 +76,9 @@ export const useAdminFinance = () => {
     const totalDiscounts = bookings.reduce((sum, booking) => sum + (booking.discount_kes ?? 0), 0);
     const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount_kes, 0);
     const netRevenue = confirmedRevenue - totalExpenses;
+    const statementIncome = statementTransactions.reduce((sum, transaction) => sum + transaction.credit_kes, 0);
+    const statementOutflow = statementTransactions.reduce((sum, transaction) => sum + transaction.debit_kes, 0);
+    const statementNet = statementIncome - statementOutflow;
 
     const expenseByArea = {
       cabins: expenses.filter((expense) => expense.business_area === "cabins").reduce((sum, expense) => sum + expense.amount_kes, 0),
@@ -96,19 +133,30 @@ export const useAdminFinance = () => {
       totalDiscounts,
       totalExpenses,
       netRevenue,
+      statementIncome,
+      statementOutflow,
+      statementNet,
       expenseByArea,
       affiliateBreakdown,
       expenseByCategory,
       monthlyPerformance,
       recentExpenses: expenses.slice(0, 8),
       recentConfirmedBookings: confirmedBookings.slice(0, 8),
+      recentStatementImports: statementImports.slice(0, 6),
+      recentStatementTransactions: statementTransactions.slice(0, 12),
     };
-  }, [bookingsQuery.data, expensesQuery.data]);
+  }, [bookingsQuery.data, expensesQuery.data, statementImportsQuery.data, statementTransactionsQuery.data]);
 
   return {
     bookingsQuery,
     expensesQuery,
+    statementImportsQuery,
+    statementTransactionsQuery,
     summary,
-    isLoading: bookingsQuery.isLoading || expensesQuery.isLoading,
+    isLoading:
+      bookingsQuery.isLoading ||
+      expensesQuery.isLoading ||
+      statementImportsQuery.isLoading ||
+      statementTransactionsQuery.isLoading,
   };
 };

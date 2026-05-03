@@ -50,6 +50,9 @@ const AdminDashboard = () => {
       <section className="grid gap-4 lg:grid-cols-3">
         <MetricCard title="Affiliate revenue" value={kes(summary.affiliateRevenue)} note="Confirmed revenue from affiliate codes" />
         <MetricCard title="Total discounts given" value={kes(summary.totalDiscounts)} note="All discounts applied across bookings" />
+        <MetricCard title="Statement money in" value={kes(summary.statementIncome)} note="Imported from payment statements" />
+        <MetricCard title="Statement money out" value={kes(summary.statementOutflow)} note="Imported from payment statements" />
+        <MetricCard title="Statement net movement" value={kes(summary.statementNet)} note="Statement money in minus money out" highlight={summary.statementNet >= 0} />
         <Card className="bg-bone/40 border-border/60">
           <CardHeader>
             <CardTitle className="font-display text-xl text-sage-deep">Expense split</CardTitle>
@@ -154,6 +157,35 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                   <p className="font-medium">{kes(booking.total_kes ?? 0)}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card className="bg-bone/40 border-border/60">
+          <CardHeader>
+            <CardTitle className="font-display text-xl text-sage-deep">Recent imported statement activity</CardTitle>
+            <CardDescription>Latest money in and money out pulled from uploaded payment statements.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {summary.recentStatementTransactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No statement transactions imported yet.</p>
+            ) : (
+              summary.recentStatementTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between gap-4 border border-border/50 rounded-md px-4 py-3">
+                  <div>
+                    <p className="font-medium text-sage-deep">{transaction.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(transaction.transaction_at), "MMM d, yyyy h:mm a")}
+                      {transaction.reference ? ` · ${transaction.reference}` : ""}
+                    </p>
+                  </div>
+                  <p className="font-medium">
+                    {transaction.credit_kes > 0 ? `+${kes(transaction.credit_kes)}` : `-${kes(transaction.debit_kes)}`}
+                  </p>
                 </div>
               ))
             )}
