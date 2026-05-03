@@ -1,5 +1,6 @@
 import { parse } from "date-fns";
 import type { TablesInsert } from "@/integrations/supabase/types";
+import pdfWorkerSrc from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 type BusinessArea = TablesInsert<"statement_imports">["business_area"];
 type StatementEntryKind = TablesInsert<"statement_transactions">["entry_kind"];
@@ -189,9 +190,10 @@ const buildTransactions = (lines: ParsedLine[]) => {
 
 export const parsePaymentStatementPdf = async (file: File): Promise<ParsedStatement> => {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
   const data = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjs.getDocument({ data, useWorker: false }).promise;
+  const pdf = await pdfjs.getDocument({ data }).promise;
 
   const parsedLines: ParsedLine[] = [];
   const allLineTexts: string[] = [];
