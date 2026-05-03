@@ -1,5 +1,5 @@
 import { parse } from "date-fns";
-import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import { PDFParse } from "pdf-parse";
 
 const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 const PERIOD_RE = /^[A-Za-z]+, [A-Za-z]+ \d{2} \d{4} - [A-Za-z]+, [A-Za-z]+ \d{2} \d{4}$/;
@@ -10,16 +10,6 @@ const toKes = (value) => {
     .trim();
   if (!normalized) return 0;
   return Math.round(Number.parseFloat(normalized) || 0);
-};
-
-const classifyEntryKind = (description, debitKes, creditKes) => {
-  const normalized = String(description || "").toLowerCase();
-  if (normalized.includes("opening balance") || normalized.includes("closing balance")) return "balance";
-  if (normalized.includes("reversal")) return debitKes > 0 ? "reversal" : "income";
-  if (normalized.includes("transfer")) return debitKes > 0 ? "transfer" : "income";
-  if (creditKes > 0) return "income";
-  if (debitKes > 0) return "expense";
-  return "other";
 };
 
 const parseStatementPeriod = (line) => {
@@ -34,158 +24,137 @@ const parseStatementPeriod = (line) => {
   }
 };
 
-const groupLines = (items) => {
-  const groups = new Map();
+const stripPageMarkers = (value) =>
+  String(value || "")
+    .replace(/--\s*\d+\s+of\s+\d+\s*--/gi, " ")
+    .replace(/\b\d+\s+of\s+\d+\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  for (const item of items) {
-    const text = item?.str?.trim();
-    if (!text) continue;
-    const y = Math.round(item.transform[5]);
-    const line = groups.get(y) || [];
-    line.push(item);
-    groups.set(y, line);
-  }
+const splitTransactionBlocks = (text) => {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 
-  return Array.from(groups.entries())
-    .sort((a, b) => b[0] - a[0])
-    .map(([y, lineItems]) => {
-      const columns = {
-        date: [],
-        description: [],
-        account: [],
-        reference: [],
-        debit: [],
-        credit: [],
-        balance: [],
-      };
-
-      for (const item of lineItems.sort((a, b) => a.transform[4] - b.transform[4])) {
-        const x = item.transform[4];
-        const text = item.str.trim();
-        if (x < 100) columns.date.push(text);
-        else if (x < 330) columns.description.push(text);
-        else if (x < 375) columns.account.push(text);
-        else if (x < 455) columns.reference.push(text);
-        else if (x < 500) columns.debit.push(text);
-        else if (x < 545) columns.credit.push(text);
-        else columns.balance.push(text);
-      }
-
-      return { y, columns };
-    });
-};
-
-const buildTransactions = (lines) => {
-  const transactions = [];
-  let current = null;
-
-  const flush = () => {
-    if (!current) return;
-    const description = current.descriptionParts.join(" ").replace(/\s+/g, " ").trim();
-    const debitKes = toKes(current.debitParts.join(" "));
-    const creditKes = toKes(current.creditParts.join(" "));
-    const balanceText = current.balanceParts.join(" ").trim();
-    const balanceKes = balanceText ? toKes(balanceText) : null;
-    const entryKind = classifyEntryKind(description, debitKes, creditKes);
-
-    if (entryKind !== "balance" && (debitKes > 0 || creditKes > 0)) {
-      transactions.push({
-        transactionAt: new Date(current.timestamp.replace(" ", "T")).toISOString(),
-        description,
-        accountNumber: current.accountParts.join(" ").trim() || null,
-        reference: current.referenceParts.join(" ").replace(/\s+/g, "").trim() || null,
-        debitKes,
-        creditKes,
-        balanceKes,
-        entryKind,
-        rawText: [
-          current.timestamp,
-          description,
-          current.accountParts.join(" "),
-          current.referenceParts.join(" "),
-          current.debitParts.join(" "),
-          current.creditParts.join(" "),
-          current.balanceParts.join(" "),
-        ].join(" | "),
-      });
-    }
-
-    current = null;
-  };
+  const blocks = [];
+  let currentBlock = null;
 
   for (const line of lines) {
-    const timestamp = line.columns.date.join(" ").trim();
+    const timestamp = line.slice(0, 19);
     if (TIMESTAMP_RE.test(timestamp)) {
-      flush();
-      current = {
-        timestamp,
-        descriptionParts: [...line.columns.description],
-        accountParts: [...line.columns.account],
-        referenceParts: [...line.columns.reference],
-        debitParts: [...line.columns.debit],
-        creditParts: [...line.columns.credit],
-        balanceParts: [...line.columns.balance],
-      };
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = line;
       continue;
     }
 
-    if (!current) continue;
-    current.descriptionParts.push(...line.columns.description);
-    current.accountParts.push(...line.columns.account);
-    current.referenceParts.push(...line.columns.reference);
-    current.debitParts.push(...line.columns.debit);
-    current.creditParts.push(...line.columns.credit);
-    current.balanceParts.push(...line.columns.balance);
+    if (currentBlock) {
+      currentBlock += ` ${line}`;
+    }
   }
 
-  flush();
-  return transactions;
+  if (currentBlock) blocks.push(currentBlock);
+  return blocks.map(stripPageMarkers);
+};
+
+const classifyTransaction = (description, amountKes) => {
+  const normalized = description.toLowerCase();
+
+  if (normalized.includes("opening balance") || normalized.includes("closing balance")) {
+    return { entryKind: "balance", debitKes: 0, creditKes: 0 };
+  }
+
+  if (normalized.includes("received payment") || normalized.includes("bank to till")) {
+    return { entryKind: "income", debitKes: 0, creditKes: amountKes };
+  }
+
+  if (normalized.includes("reversal")) {
+    return { entryKind: "reversal", debitKes: 0, creditKes: amountKes };
+  }
+
+  if (normalized.includes("transfer charge")) {
+    return { entryKind: "transfer", debitKes: amountKes, creditKes: 0 };
+  }
+
+  if (normalized.includes("transfer of")) {
+    return { entryKind: "transfer", debitKes: amountKes, creditKes: 0 };
+  }
+
+  if (normalized.includes("fee") || normalized.includes("charge")) {
+    return { entryKind: "expense", debitKes: amountKes, creditKes: 0 };
+  }
+
+  return { entryKind: "other", debitKes: 0, creditKes: amountKes };
+};
+
+const parseTransactionBlock = (block) => {
+  const timestamp = block.slice(0, 19);
+  if (!TIMESTAMP_RE.test(timestamp)) return null;
+
+  const body = block.slice(19).trim();
+  const normalizedBody = body.toLowerCase();
+  if (normalizedBody.startsWith("closing balance") || normalizedBody.startsWith("opening balance")) {
+    return null;
+  }
+
+  const amountMatch = body.match(/(\d[\d,]*\.\d{2})(?:\s+(\d[\d,]*\.\d{2}))?\s*$/);
+  if (!amountMatch) return null;
+
+  const amountKes = toKes(amountMatch[1]);
+  const balanceKes = amountMatch[2] ? toKes(amountMatch[2]) : amountKes;
+  const detailText = body.slice(0, amountMatch.index).trim();
+
+  const detailMatch = detailText.match(/^(.*?)(?:\s+(\d{6,}))?(?:\s+([A-Za-z0-9,.-]+))?$/);
+  const description = (detailMatch?.[1] || detailText).trim();
+  const accountNumber = detailMatch?.[2] || null;
+  const reference = detailMatch?.[3] ? detailMatch[3].replace(/\s+/g, "") : null;
+
+  const classified = classifyTransaction(description, amountKes);
+  if (classified.entryKind === "balance") return null;
+
+  return {
+    transactionAt: new Date(timestamp.replace(" ", "T")).toISOString(),
+    description,
+    accountNumber,
+    reference,
+    debitKes: classified.debitKes,
+    creditKes: classified.creditKes,
+    balanceKes,
+    entryKind: classified.entryKind,
+    rawText: block,
+  };
 };
 
 const parseStatementPdf = async (fileBytes) => {
-  const pdf = await pdfjs.getDocument({ data: fileBytes, disableWorker: true }).promise;
-  const parsedLines = [];
-  const allLineTexts = [];
+  const parser = new PDFParse({ data: fileBytes });
 
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    const pageItems = textContent.items.filter((item) => "str" in item);
-    const pageLines = groupLines(pageItems);
-    parsedLines.push(...pageLines);
-    allLineTexts.push(
-      ...pageLines.map((line) =>
-        [
-          line.columns.date.join(" "),
-          line.columns.description.join(" "),
-          line.columns.account.join(" "),
-          line.columns.reference.join(" "),
-          line.columns.debit.join(" "),
-          line.columns.credit.join(" "),
-          line.columns.balance.join(" "),
-        ]
-          .join(" ")
-          .replace(/\s+/g, " ")
-          .trim(),
-      ),
-    );
+  try {
+    const textResult = await parser.getText();
+    const plainText = textResult.text || "";
+    const sourceName = plainText.toLowerCase().includes("kopokopo") ? "Kopo Kopo" : "Payment statement";
+    const periodLine = plainText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => PERIOD_RE.test(line)) || "";
+    const { statementFrom, statementTo } = parseStatementPeriod(periodLine);
+
+    const transactions = splitTransactionBlocks(plainText)
+      .map(parseTransactionBlock)
+      .filter(Boolean);
+
+    if (transactions.length === 0) {
+      throw new Error("No transactions were found in that statement.");
+    }
+
+    return {
+      sourceName,
+      statementFrom,
+      statementTo,
+      transactions,
+    };
+  } finally {
+    await parser.destroy();
   }
-
-  const sourceName = allLineTexts.find((line) => line.toLowerCase().includes("kopokopo")) ? "Kopo Kopo" : "Payment statement";
-  const periodLine = allLineTexts.find((line) => PERIOD_RE.test(line.trim())) || "";
-  const { statementFrom, statementTo } = parseStatementPeriod(periodLine);
-  const transactions = buildTransactions(parsedLines);
-
-  if (transactions.length === 0) {
-    throw new Error("No transactions were found in that statement.");
-  }
-
-  return {
-    sourceName,
-    statementFrom,
-    statementTo,
-    transactions,
-  };
 };
 
 export default async function handler(req, res) {
