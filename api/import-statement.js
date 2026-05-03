@@ -1,57 +1,19 @@
 import { parse } from "date-fns";
-import type { TablesInsert } from "@/integrations/supabase/types";
-
-type BusinessArea = TablesInsert<"statement_imports">["business_area"];
-type StatementEntryKind = TablesInsert<"statement_transactions">["entry_kind"];
-
-type TextItem = {
-  str: string;
-  transform: number[];
-};
-
-export type ParsedStatementTransaction = {
-  transactionAt: string;
-  description: string;
-  accountNumber: string | null;
-  reference: string | null;
-  debitKes: number;
-  creditKes: number;
-  balanceKes: number | null;
-  entryKind: StatementEntryKind;
-  rawText: string;
-};
-
-export type ParsedStatement = {
-  sourceName: string;
-  statementFrom: string | null;
-  statementTo: string | null;
-  transactions: ParsedStatementTransaction[];
-};
-
-type ParsedLine = {
-  y: number;
-  columns: {
-    date: string[];
-    description: string[];
-    account: string[];
-    reference: string[];
-    debit: string[];
-    credit: string[];
-    balance: string[];
-  };
-};
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 const PERIOD_RE = /^[A-Za-z]+, [A-Za-z]+ \d{2} \d{4} - [A-Za-z]+, [A-Za-z]+ \d{2} \d{4}$/;
 
-const toKes = (value: string) => {
-  const normalized = value.replace(/,/g, "").trim();
+const toKes = (value) => {
+  const normalized = String(value || "")
+    .replace(/,/g, "")
+    .trim();
   if (!normalized) return 0;
   return Math.round(Number.parseFloat(normalized) || 0);
 };
 
-const classifyEntryKind = (description: string, debitKes: number, creditKes: number): StatementEntryKind => {
-  const normalized = description.toLowerCase();
+const classifyEntryKind = (description, debitKes, creditKes) => {
+  const normalized = String(description || "").toLowerCase();
   if (normalized.includes("opening balance") || normalized.includes("closing balance")) return "balance";
   if (normalized.includes("reversal")) return debitKes > 0 ? "reversal" : "income";
   if (normalized.includes("transfer")) return debitKes > 0 ? "transfer" : "income";
@@ -60,8 +22,8 @@ const classifyEntryKind = (description: string, debitKes: number, creditKes: num
   return "other";
 };
 
-const parseStatementPeriod = (line: string) => {
-  if (!PERIOD_RE.test(line.trim())) return { statementFrom: null, statementTo: null };
+const parseStatementPeriod = (line) => {
+  if (!PERIOD_RE.test(String(line || "").trim())) return { statementFrom: null, statementTo: null };
   const [fromLabel, toLabel] = line.split(" - ");
   try {
     const from = parse(fromLabel.trim(), "EEEE, MMMM dd yyyy", new Date()).toISOString().slice(0, 10);
@@ -72,13 +34,14 @@ const parseStatementPeriod = (line: string) => {
   }
 };
 
-const groupLines = (items: TextItem[]) => {
-  const groups = new Map<number, TextItem[]>();
+const groupLines = (items) => {
+  const groups = new Map();
+
   for (const item of items) {
-    const text = item.str?.trim();
+    const text = item?.str?.trim();
     if (!text) continue;
     const y = Math.round(item.transform[5]);
-    const line = groups.get(y) ?? [];
+    const line = groups.get(y) || [];
     line.push(item);
     groups.set(y, line);
   }
@@ -86,7 +49,7 @@ const groupLines = (items: TextItem[]) => {
   return Array.from(groups.entries())
     .sort((a, b) => b[0] - a[0])
     .map(([y, lineItems]) => {
-      const columns: ParsedLine["columns"] = {
+      const columns = {
         date: [],
         description: [],
         account: [],
@@ -112,17 +75,9 @@ const groupLines = (items: TextItem[]) => {
     });
 };
 
-const buildTransactions = (lines: ParsedLine[]) => {
-  const transactions: ParsedStatementTransaction[] = [];
-  let current: {
-    timestamp: string;
-    descriptionParts: string[];
-    accountParts: string[];
-    referenceParts: string[];
-    debitParts: string[];
-    creditParts: string[];
-    balanceParts: string[];
-  } | null = null;
+const buildTransactions = (lines) => {
+  const transactions = [];
+  let current = null;
 
   const flush = () => {
     if (!current) return;
@@ -187,50 +142,68 @@ const buildTransactions = (lines: ParsedLine[]) => {
   return transactions;
 };
 
-export const parsePaymentStatementPdf = async (file: File): Promise<ParsedStatement> => {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
+const parseStatementPdf = async (fileBytes) => {
+  const pdf = await pdfjs.getDocument({ data: fileBytes, disableWorker: true }).promise;
+  const parsedLines = [];
+  const allLineTexts = [];
 
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+    const pageItems = textContent.items.filter((item) => "str" in item);
+    const pageLines = groupLines(pageItems);
+    parsedLines.push(...pageLines);
+    allLineTexts.push(
+      ...pageLines.map((line) =>
+        [
+          line.columns.date.join(" "),
+          line.columns.description.join(" "),
+          line.columns.account.join(" "),
+          line.columns.reference.join(" "),
+          line.columns.debit.join(" "),
+          line.columns.credit.join(" "),
+          line.columns.balance.join(" "),
+        ]
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      ),
+    );
   }
 
-  const response = await fetch("/api/import-statement", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      fileName: file.name,
-      fileBase64: btoa(binary),
-    }),
-  });
+  const sourceName = allLineTexts.find((line) => line.toLowerCase().includes("kopokopo")) ? "Kopo Kopo" : "Payment statement";
+  const periodLine = allLineTexts.find((line) => PERIOD_RE.test(line.trim())) || "";
+  const { statementFrom, statementTo } = parseStatementPeriod(periodLine);
+  const transactions = buildTransactions(parsedLines);
 
-  const body = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(body?.error || "Could not read that statement.");
+  if (transactions.length === 0) {
+    throw new Error("No transactions were found in that statement.");
   }
 
-  return body as ParsedStatement;
+  return {
+    sourceName,
+    statementFrom,
+    statementTo,
+    transactions,
+  };
 };
 
-export const toStatementTransactionRows = (
-  statement: ParsedStatement,
-  importId: string,
-  businessArea: BusinessArea,
-): TablesInsert<"statement_transactions">[] =>
-  statement.transactions.map((transaction) => ({
-    import_id: importId,
-    business_area: businessArea,
-    transaction_at: transaction.transactionAt,
-    description: transaction.description,
-    account_number: transaction.accountNumber,
-    reference: transaction.reference,
-    debit_kes: transaction.debitKes,
-    credit_kes: transaction.creditKes,
-    balance_kes: transaction.balanceKes,
-    entry_kind: transaction.entryKind,
-    raw_text: transaction.rawText,
-  }));
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    const { fileBase64 } = req.body || {};
+    if (!fileBase64) {
+      return res.status(400).json({ error: "Statement file is missing." });
+    }
+
+    const fileBytes = Uint8Array.from(Buffer.from(fileBase64, "base64"));
+    const parsed = await parseStatementPdf(fileBytes);
+    return res.status(200).json(parsed);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not read that statement.";
+    return res.status(500).json({ error: message });
+  }
+}
