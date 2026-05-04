@@ -125,6 +125,15 @@ const parseTransactionBlock = (block) => {
 };
 
 const parseStatementPdf = async (fileBytes) => {
+  if (typeof globalThis.DOMMatrix === "undefined") {
+    const canvas = await import("@napi-rs/canvas");
+    globalThis.DOMMatrix = canvas.DOMMatrix;
+    globalThis.DOMPoint = canvas.DOMPoint;
+    globalThis.DOMRect = canvas.DOMRect;
+    globalThis.ImageData = canvas.ImageData;
+    globalThis.Path2D = canvas.Path2D;
+  }
+
   const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: fileBytes });
 
