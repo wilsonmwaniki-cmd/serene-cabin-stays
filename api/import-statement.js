@@ -1,5 +1,4 @@
 import { parse } from "date-fns";
-import { PDFParse } from "pdf-parse";
 
 const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 const PERIOD_RE = /^[A-Za-z]+, [A-Za-z]+ \d{2} \d{4} - [A-Za-z]+, [A-Za-z]+ \d{2} \d{4}$/;
@@ -126,6 +125,7 @@ const parseTransactionBlock = (block) => {
 };
 
 const parseStatementPdf = async (fileBytes) => {
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: fileBytes });
 
   try {
