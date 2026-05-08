@@ -92,6 +92,8 @@ const WAIVER_TERMS = [
   "The tourist grants and assigns to Wild by Lera all right, title and interest in all photographs and audio and video taken during the stay at Wild by Lera, including any royalties, profits or other benefits derived from such images. The tourist understands and agrees that no compensation is due in connection with the foregoing.",
 ];
 
+const MAX_STAY_NIGHTS = 30;
+
 export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -128,6 +130,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const { data: addons = [] } = useAddons();
   const checkInDate = new Date(checkIn);
   const checkOutDate = new Date(checkOut);
+  const maxStayCheckOutDate = new Date(checkInDate);
+  maxStayCheckOutDate.setDate(maxStayCheckOutDate.getDate() + MAX_STAY_NIGHTS);
+  const effectiveMaxCheckOutDate = maxStayCheckOutDate > maxBookingDate ? maxBookingDate : maxStayCheckOutDate;
+  const effectiveMaxCheckOut = format(effectiveMaxCheckOutDate, "yyyy-MM-dd");
   const totalGuests = adults + childrenUnder12Count + children12PlusCount;
   const minimumRooms = Math.max(1, Math.ceil(totalGuests / 2));
 
@@ -135,8 +141,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     const minimumStayEnd = format(new Date(new Date(checkIn).getTime() + 2 * 86400000), "yyyy-MM-dd");
     if (checkOut < minimumStayEnd) {
       setCheckOut(minimumStayEnd > maxCheckOut ? maxCheckOut : minimumStayEnd);
+    } else if (checkOut > effectiveMaxCheckOut) {
+      setCheckOut(effectiveMaxCheckOut);
     }
-  }, [checkIn, checkOut, maxCheckOut]);
+  }, [checkIn, checkOut, maxCheckOut, effectiveMaxCheckOut]);
 
   useEffect(() => {
     if (rooms < minimumRooms) {
@@ -289,10 +297,18 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       });
       return;
     }
-    if (checkOut < minCheckOut || checkOut > maxCheckOut) {
+    if (checkOut < minCheckOut || checkOut > effectiveMaxCheckOut) {
       toast({
         title: "Check-out date not allowed",
-        description: "Please choose a check-out date at least 2 nights after check-in.",
+        description: "Please choose a check-out date between 2 and 30 nights after check-in.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (nights > MAX_STAY_NIGHTS) {
+      toast({
+        title: "Stay length not allowed",
+        description: "Guests can stay for up to 30 nights in one booking.",
         variant: "destructive",
       });
       return;
@@ -452,7 +468,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
                 mode="single"
                 selected={checkOutDate}
                 onSelect={(date) => date && setCheckOut(format(date, "yyyy-MM-dd"))}
-                disabled={(date) => format(date, "yyyy-MM-dd") < minCheckOut || format(date, "yyyy-MM-dd") > maxCheckOut}
+                disabled={(date) => format(date, "yyyy-MM-dd") < minCheckOut || format(date, "yyyy-MM-dd") > effectiveMaxCheckOut}
                 initialFocus
               />
             </PopoverContent>
@@ -475,6 +491,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         Booking note: each cabin holds a maximum of 2 guests. {totalGuests} guest{totalGuests === 1 ? "" : "s"} currently require {minimumRooms} room{minimumRooms === 1 ? "" : "s"}.
       </p>
       <p className="text-xs text-muted-foreground">Minimum stay: 2 nights.</p>
+      <p className="text-xs text-muted-foreground">Maximum stay: 30 nights.</p>
 
       <div className="border-l-2 border-ember pl-4 py-2 bg-linen/40 text-sm flex items-center gap-2 min-h-[44px]">
         {checking ? (
@@ -489,7 +506,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <span className="text-muted-foreground">Choose your dates to see availability.</span>
         )}
       </div>
-      <p className="text-xs text-muted-foreground">You can book from today up to 12 months in advance.</p>
+      <p className="text-xs text-muted-foreground">You can book from today up to 12 months in advance, for stays up to 30 nights.</p>
 
       {/* Add-ons */}
       {visibleAddons.length > 0 && (
@@ -646,7 +663,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
 
       <button
         type="submit"
-        disabled={submitting || !enoughUnits || nights < 2 || !waiverAccepted}
+        disabled={submitting || !enoughUnits || nights < 2 || nights > MAX_STAY_NIGHTS || !waiverAccepted}
         className="w-full bg-sage-deep hover:bg-sage text-bone py-4 text-sm uppercase tracking-[0.2em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {submitting ? "Sending…" : "Request to Book"}

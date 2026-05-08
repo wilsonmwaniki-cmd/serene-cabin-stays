@@ -29,6 +29,7 @@ const todayPlus = (days: number) => {
 };
 
 const MAX_BOOKING_WINDOW_DAYS = 365;
+const MAX_STAY_NIGHTS = 30;
 const maxBookDate = todayPlus(MAX_BOOKING_WINDOW_DAYS);
 
 export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
@@ -41,12 +42,21 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
   const [children12Plus, setChildren12Plus] = useState(0);
   const totalGuests = adults + childrenUnder12 + children12Plus;
   const minimumRooms = Math.max(1, Math.ceil(totalGuests / 2));
+  const maxStayCheckOut = new Date(checkIn);
+  maxStayCheckOut.setDate(maxStayCheckOut.getDate() + MAX_STAY_NIGHTS);
+  const latestCheckOut = maxStayCheckOut > maxBookDate ? maxBookDate : maxStayCheckOut;
 
   useEffect(() => {
     if (rooms < minimumRooms) {
       setRooms(minimumRooms);
     }
   }, [rooms, minimumRooms]);
+
+  useEffect(() => {
+    if (checkOut > latestCheckOut) {
+      setCheckOut(latestCheckOut);
+    }
+  }, [checkOut, latestCheckOut]);
 
   const submit = () => {
     const q: BookingQuery = { checkIn, checkOut, rooms, adults, childrenUnder12, children12Plus };
@@ -78,8 +88,14 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
           setCheckIn(d);
           const minimumCheckOut = new Date(d);
           minimumCheckOut.setDate(minimumCheckOut.getDate() + 2);
+          const maximumCheckOut = new Date(d);
+          maximumCheckOut.setDate(maximumCheckOut.getDate() + MAX_STAY_NIGHTS);
+          const cappedMaximumCheckOut = maximumCheckOut > maxBookDate ? maxBookDate : maximumCheckOut;
+
           if (minimumCheckOut >= checkOut) {
             setCheckOut(minimumCheckOut > maxBookDate ? maxBookDate : minimumCheckOut);
+          } else if (checkOut > cappedMaximumCheckOut) {
+            setCheckOut(cappedMaximumCheckOut);
           }
         }}
         disabled={(d) => d < todayPlus(0) || d > todayPlus(MAX_BOOKING_WINDOW_DAYS - 2)}
@@ -91,7 +107,7 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
         disabled={(d) => {
           const minimumCheckOut = new Date(checkIn);
           minimumCheckOut.setDate(minimumCheckOut.getDate() + 2);
-          return d < minimumCheckOut || d > maxBookDate;
+          return d < minimumCheckOut || d > latestCheckOut;
         }}
       />
 
