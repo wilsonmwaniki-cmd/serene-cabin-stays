@@ -97,6 +97,7 @@ const WAIVER_TERMS = [
 ];
 
 const MAX_STAY_NIGHTS = 30;
+const MPESA_TILL_NUMBER = "3128049";
 
 export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const today = new Date();
@@ -513,6 +514,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       discountKes,
       totalKes: grandTotal,
       promoCode: appliedPromo?.code ?? undefined,
+      tillNumber: MPESA_TILL_NUMBER,
     };
     sendEmail({
       templateName: "booking-inquiry-received",
@@ -534,7 +536,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <Check size={22} />
         </div>
         <h3 className="font-display text-3xl text-sage-deep mb-2">Thank you</h3>
-        <p className="text-muted-foreground max-w-md mx-auto">Your inquiry has reached us. We will confirm your stay personally within a few hours.</p>
+        <p className="text-muted-foreground max-w-md mx-auto">Your inquiry has reached us. We will confirm your stay personally within a few hours, then you can pay by M-Pesa to Till Number {MPESA_TILL_NUMBER}.</p>
       </div>
     );
   }
@@ -804,6 +806,16 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <span className="text-sage-deep">Total</span>
           <span className="text-sage-deep">KES {grandTotal.toLocaleString()}</span>
         </div>
+      </div>
+
+      <div className="border border-border bg-bone px-4 py-4 space-y-2 text-sm">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Payment after approval</p>
+        <p className="text-foreground/85">
+          Once we approve your stay, please pay the final amount by M-Pesa to <span className="font-medium">Till Number {MPESA_TILL_NUMBER}</span>.
+        </p>
+        <p className="text-muted-foreground">
+          Safaricom will send you the payment confirmation text message automatically after you pay.
+        </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

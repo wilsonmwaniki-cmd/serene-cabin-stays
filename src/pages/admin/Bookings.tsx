@@ -20,6 +20,7 @@ const statusVariant = (s: string) =>
   s === "confirmed" ? "default" : s === "cancelled" ? "destructive" : "secondary";
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+const MPESA_TILL_NUMBER = "3128049";
 
 const normalizeWhatsAppPhone = (value: string | null) => {
   if (!value) return null;
@@ -45,8 +46,10 @@ const createWhatsAppUrl = (booking: AdminBooking) => {
     `Children under 12: ${booking.children}`,
     `Guests 12+: ${booking.children_12_plus ?? 0}`,
     `Total: KES ${(booking.total_kes ?? 0).toLocaleString()}`,
+    `Payment: M-Pesa Till Number ${MPESA_TILL_NUMBER}`,
     booking.notes ? `Notes: ${booking.notes}` : null,
     "",
+    "Safaricom will send you an M-Pesa confirmation SMS after payment.",
     "Please reply here to confirm these details.",
   ]
     .filter(Boolean)
@@ -119,6 +122,7 @@ const AdminBookings = () => {
               discountKes: b.discount_kes ?? 0,
               totalKes: b.total_kes ?? 0,
               promoCode: b.promo_code_text ?? undefined,
+              tillNumber: MPESA_TILL_NUMBER,
             },
           });
         }
@@ -294,6 +298,7 @@ const AdminBookings = () => {
                   <Field label="Discount" value={selectedBooking.discount_kes ? `KES ${selectedBooking.discount_kes.toLocaleString()}` : "—"} />
                   <Field label="Total" value={`KES ${(selectedBooking.total_kes ?? 0).toLocaleString()}`} />
                   <Field label="Code" value={selectedBooking.promo_code_text ?? "—"} />
+                  <Field label="Pay To" value={`Till Number ${MPESA_TILL_NUMBER}`} />
                 </div>
               </div>
 

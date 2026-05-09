@@ -13,9 +13,11 @@ interface Props {
   checkOut?: string
   adults?: number
   children?: number
+  totalKes?: number
+  tillNumber?: string
 }
 
-const BookingConfirmation = ({ name, podName, checkIn, checkOut, adults, children }: Props) => (
+const BookingConfirmation = ({ name, podName, checkIn, checkOut, adults, children, totalKes, tillNumber }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>Your stay at {SITE_NAME} is confirmed</Preview>
@@ -35,7 +37,15 @@ const BookingConfirmation = ({ name, podName, checkIn, checkOut, adults, childre
               {children ? ` · ${children} child${children === 1 ? '' : 'ren'}` : ''}
             </Text>
           )}
+          {totalKes != null && <Text style={row}>Total: KES {Number(totalKes).toLocaleString()}</Text>}
         </Section>
+        {tillNumber && (
+          <Section style={card}>
+            <Text style={label}>How to pay</Text>
+            <Text style={row}>Please pay by M-Pesa to Till Number {tillNumber}.</Text>
+            <Text style={rowMuted}>Safaricom will send you an M-Pesa confirmation text message after payment.</Text>
+          </Section>
+        )}
         <Text style={text}>
           Check-in is from 3pm and check-out by 2pm. If you have any special requests or arrival timing changes, just reply to this email.
         </Text>
@@ -50,7 +60,7 @@ export const template = {
   component: BookingConfirmation,
   subject: `Your stay is confirmed · ${SITE_NAME}`,
   displayName: 'Booking confirmed',
-  previewData: { name: 'Amani', podName: 'Glamping Pod 1', checkIn: 'Jun 14, 2026', checkOut: 'Jun 16, 2026', adults: 2, children: 0 },
+  previewData: { name: 'Amani', podName: 'Glamping Pod 1', checkIn: 'Jun 14, 2026', checkOut: 'Jun 16, 2026', adults: 2, children: 0, totalKes: 18000, tillNumber: '3128049' },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Georgia, serif' }

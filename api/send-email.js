@@ -24,6 +24,7 @@ const renderTemplate = (templateName, data = {}) => {
   const subject = escapeHtml(data.subject || "");
   const message = escapeHtml(data.message || "");
   const promoCode = escapeHtml(data.promoCode || "");
+  const tillNumber = escapeHtml(data.tillNumber || PAYMENT_TILL);
   const adults = Number(data.adults ?? 0);
   const children = Number(data.children ?? 0);
   const childrenUnder12 = Number(data.childrenUnder12 ?? data.children ?? 0);
@@ -52,6 +53,7 @@ const renderTemplate = (templateName, data = {}) => {
           <p>Your stay request has reached us. We'll confirm the details personally within a few hours.</p>
           <p><strong>${podName}</strong><br>${checkIn} → ${checkOut}<br>${guestSummary}</p>
           ${pricingHtml}
+          <p>Once we approve your stay, please pay by M-Pesa to Till Number ${tillNumber}. Safaricom will send you the payment confirmation text message automatically.</p>
           <p>Check-in 3pm · Check-out 2pm</p>
         `,
       };
@@ -97,7 +99,8 @@ const renderTemplate = (templateName, data = {}) => {
           <p>Your stay at ${SITE_NAME} is confirmed. We can't wait to host you.</p>
           <p><strong>${podName}</strong><br>${checkIn} → ${checkOut}<br>${guestSummary}</p>
           ${pricingHtml}
-          <p><strong>How to pay:</strong> Pay through Till Number ${PAYMENT_TILL}.</p>
+          <p><strong>How to pay:</strong> Pay through Till Number ${tillNumber}.</p>
+          <p>Safaricom will send you an M-Pesa confirmation text message after payment.</p>
           <p>Check-in is from 3pm and check-out by 2pm. If anything changes, just reply to this email.</p>
         `,
       };

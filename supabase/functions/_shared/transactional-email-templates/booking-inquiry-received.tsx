@@ -14,9 +14,10 @@ interface Props {
   adults?: number
   children?: number
   rooms?: number
+  tillNumber?: string
 }
 
-const BookingInquiryReceived = ({ name, podName, checkIn, checkOut, adults, children, rooms }: Props) => (
+const BookingInquiryReceived = ({ name, podName, checkIn, checkOut, adults, children, rooms, tillNumber }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>Your stay request is with us</Preview>
@@ -38,6 +39,11 @@ const BookingInquiryReceived = ({ name, podName, checkIn, checkOut, adults, chil
             </Text>
           )}
         </Section>
+        {tillNumber && (
+          <Text style={text}>
+            Once we approve your stay, you can pay by M-Pesa to Till Number {tillNumber}. Safaricom will send you the payment confirmation text message automatically.
+          </Text>
+        )}
         <Hr style={hr} />
         <Text style={footer}>
           Check-in 3pm · Check-out 2pm<br />
@@ -52,7 +58,7 @@ export const template = {
   component: BookingInquiryReceived,
   subject: `We've received your stay request · ${SITE_NAME}`,
   displayName: 'Booking inquiry — guest confirmation',
-  previewData: { name: 'Amani', podName: 'Glamping Pod 1', checkIn: 'Jun 14, 2026', checkOut: 'Jun 16, 2026', adults: 2, children: 0, rooms: 1 },
+  previewData: { name: 'Amani', podName: 'Glamping Pod 1', checkIn: 'Jun 14, 2026', checkOut: 'Jun 16, 2026', adults: 2, children: 0, rooms: 1, tillNumber: '3128049' },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Georgia, serif' }
