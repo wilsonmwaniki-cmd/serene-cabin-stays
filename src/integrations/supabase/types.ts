@@ -109,6 +109,15 @@ export type Database = {
           guest_phone: string | null
           id: string
           notes: string | null
+          payment_amount_kes: number | null
+          payment_phone: string | null
+          payment_provider: string | null
+          payment_received_at: string | null
+          payment_reference: string | null
+          payment_request_id: string | null
+          payment_request_location: string | null
+          payment_requested_at: string | null
+          payment_status: string
           pod_id: string
           pod_allocations: Json | null
           promo_code_id: string | null
@@ -132,6 +141,15 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           notes?: string | null
+          payment_amount_kes?: number | null
+          payment_phone?: string | null
+          payment_provider?: string | null
+          payment_received_at?: string | null
+          payment_reference?: string | null
+          payment_request_id?: string | null
+          payment_request_location?: string | null
+          payment_requested_at?: string | null
+          payment_status?: string
           pod_id: string
           pod_allocations?: Json | null
           promo_code_id?: string | null
@@ -155,6 +173,15 @@ export type Database = {
           guest_phone?: string | null
           id?: string
           notes?: string | null
+          payment_amount_kes?: number | null
+          payment_phone?: string | null
+          payment_provider?: string | null
+          payment_received_at?: string | null
+          payment_reference?: string | null
+          payment_request_id?: string | null
+          payment_request_location?: string | null
+          payment_requested_at?: string | null
+          payment_status?: string
           pod_id?: string
           pod_allocations?: Json | null
           promo_code_id?: string | null

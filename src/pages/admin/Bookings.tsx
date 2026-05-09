@@ -14,10 +14,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { CalendarPlus, Check, MessageCircle, RotateCcw, X } from "lucide-react";
+import { CalendarPlus, Check, CreditCard, MessageCircle, RefreshCcw, RotateCcw, X } from "lucide-react";
 
 const statusVariant = (s: string) =>
   s === "confirmed" ? "default" : s === "cancelled" ? "destructive" : "secondary";
+
+const paymentStatusVariant = (s: string) =>
+  s === "paid" ? "default"
+  : s === "failed" ? "destructive"
+  : s === "requested" ? "secondary"
+  : "outline";
+
+const paymentStatusLabel = (s: string) =>
+  s === "paid" ? "Paid"
+  : s === "requested" ? "Payment Requested"
+  : s === "failed" ? "Payment Failed"
+  : s === "refunded" ? "Refunded"
+  : "Unpaid";
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 const MPESA_TILL_NUMBER = "3128049";
@@ -73,6 +86,81 @@ const AdminBookings = () => {
 
   const filtered = bookings.filter((b) => filter === "all" || b.status === filter);
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
+
+  const requestPaymentPrompt = async (booking: AdminBooking, options?: { silentConfigFailure?: boolean }) => {
+    setBusyId(booking.id);
+
+    try {
+      const response = await fetch("/api/kopokopo-initiate-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "Could not send payment prompt");
+      }
+
+      toast({
+        title: "M-Pesa prompt sent",
+        description: `A payment prompt was sent to ${booking.guest_name}.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send payment prompt";
+      if (!options?.silentConfigFailure || !message.toLowerCase().includes("not configured")) {
+        toast({
+          title: "Payment prompt not sent",
+          description: message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Booking approved",
+          description: "KopoKopo is not configured yet, so the payment prompt was not sent.",
+        });
+      }
+    } finally {
+      qc.invalidateQueries({ queryKey: ["admin_bookings"] });
+      setBusyId(null);
+    }
+  };
+
+  const refreshPaymentStatus = async (booking: AdminBooking) => {
+    setBusyId(booking.id);
+
+    try {
+      const response = await fetch("/api/kopokopo-check-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "Could not refresh payment status");
+      }
+
+      toast({
+        title: "Payment status updated",
+        description: `${booking.guest_name} is now marked as ${paymentStatusLabel(body?.booking?.payment_status ?? booking.payment_status).toLowerCase()}.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not refresh payment status";
+      toast({
+        title: "Payment check failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      qc.invalidateQueries({ queryKey: ["admin_bookings"] });
+      setBusyId(null);
+    }
+  };
 
   const setStatus = async (b: AdminBooking, status: "pending" | "confirmed" | "cancelled") => {
     setBusyId(b.id);
@@ -130,6 +218,10 @@ const AdminBookings = () => {
         // email not set up yet — booking still updated
       }
 
+      if (status === "confirmed") {
+        await requestPaymentPrompt({ ...b, status }, { silentConfigFailure: true });
+      }
+
       toast({ title: statusToastTitle(status), description: `${b.guest_name} · ${b.pod_name}` });
     } catch (err) {
       qc.setQueryData(["admin_bookings"], previousBookings);
@@ -175,6 +267,7 @@ const AdminBookings = () => {
                 <div className="flex items-center gap-3 mb-1">
                   <h2 className="font-display text-xl text-sage-deep">{b.guest_name}</h2>
                   <Badge variant={statusVariant(b.status)}>{b.status}</Badge>
+                  <Badge variant={paymentStatusVariant(b.payment_status)}>{paymentStatusLabel(b.payment_status)}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {b.pod_name} · {fmtDate(b.check_in)} → {fmtDate(b.check_out)}
@@ -193,6 +286,16 @@ const AdminBookings = () => {
                     <CalendarPlus size={14} className="mr-1" /> Add to Google Calendar
                   </a>
                 </Button>
+                {(b.status === "confirmed" || b.status === "pending") && (
+                  <Button size="sm" variant="outline" onClick={() => requestPaymentPrompt(b)} disabled={busyId === b.id}>
+                    <CreditCard size={14} className="mr-1" /> Send M-Pesa Prompt
+                  </Button>
+                )}
+                {b.payment_request_location && (
+                  <Button size="sm" variant="outline" onClick={() => refreshPaymentStatus(b)} disabled={busyId === b.id}>
+                    <RefreshCcw size={14} className="mr-1" /> Refresh Payment
+                  </Button>
+                )}
                 {b.status === "pending" && (
                   <>
                     <Button size="sm" onClick={() => setStatus(b, "confirmed")} disabled={busyId === b.id}>
@@ -222,6 +325,11 @@ const AdminBookings = () => {
               <Field label="Total" value={`KES ${(b.total_kes ?? 0).toLocaleString()}`} />
               <Field label="Discount" value={b.discount_kes ? `KES ${b.discount_kes.toLocaleString()}` : "—"} />
               <Field label="Code" value={b.promo_code_text ?? "—"} />
+            </div>
+            <div className="mt-3 grid md:grid-cols-3 gap-3 text-sm">
+              <Field label="Payment" value={paymentStatusLabel(b.payment_status)} />
+              <Field label="Payment Phone" value={b.payment_phone ?? b.guest_phone ?? "—"} />
+              <Field label="Payment Ref" value={b.payment_reference ?? "—"} />
             </div>
             {b.notes && <p className="mt-4 text-sm text-foreground/75 italic">"{b.notes}"</p>}
             {b.addons.length > 0 && (
@@ -254,6 +362,7 @@ const AdminBookings = () => {
 
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 <Badge variant={statusVariant(selectedBooking.status)}>{selectedBooking.status}</Badge>
+                <Badge variant={paymentStatusVariant(selectedBooking.payment_status)}>{paymentStatusLabel(selectedBooking.payment_status)}</Badge>
                 {createWhatsAppUrl(selectedBooking) && (
                   <Button size="sm" variant="outline" asChild>
                     <a href={createWhatsAppUrl(selectedBooking) ?? "#"} target="_blank" rel="noreferrer">
@@ -266,6 +375,16 @@ const AdminBookings = () => {
                     <CalendarPlus size={14} className="mr-1" /> Add to Google Calendar
                   </a>
                 </Button>
+                {(selectedBooking.status === "confirmed" || selectedBooking.status === "pending") && (
+                  <Button size="sm" variant="outline" onClick={() => requestPaymentPrompt(selectedBooking)} disabled={busyId === selectedBooking.id}>
+                    <CreditCard size={14} className="mr-1" /> Send M-Pesa Prompt
+                  </Button>
+                )}
+                {selectedBooking.payment_request_location && (
+                  <Button size="sm" variant="outline" onClick={() => refreshPaymentStatus(selectedBooking)} disabled={busyId === selectedBooking.id}>
+                    <RefreshCcw size={14} className="mr-1" /> Refresh Payment
+                  </Button>
+                )}
                 {selectedBooking.status === "pending" && (
                   <>
                     <Button size="sm" onClick={() => setStatus(selectedBooking, "confirmed")} disabled={busyId === selectedBooking.id}>
@@ -292,6 +411,7 @@ const AdminBookings = () => {
                   <Field label="Adults" value={String(selectedBooking.adults)} />
                   <Field label="Children Under 12" value={String(selectedBooking.children)} />
                   <Field label="Guests 12+" value={String(selectedBooking.children_12_plus ?? 0)} />
+                  <Field label="Payment Phone" value={selectedBooking.payment_phone ?? selectedBooking.guest_phone ?? "—"} />
                 </div>
                 <div className="space-y-3">
                   <Field label="Subtotal" value={`KES ${(selectedBooking.subtotal_kes ?? selectedBooking.total_kes ?? 0).toLocaleString()}`} />
@@ -299,6 +419,8 @@ const AdminBookings = () => {
                   <Field label="Total" value={`KES ${(selectedBooking.total_kes ?? 0).toLocaleString()}`} />
                   <Field label="Code" value={selectedBooking.promo_code_text ?? "—"} />
                   <Field label="Pay To" value={`Till Number ${MPESA_TILL_NUMBER}`} />
+                  <Field label="Payment Status" value={paymentStatusLabel(selectedBooking.payment_status)} />
+                  <Field label="Payment Ref" value={selectedBooking.payment_reference ?? "—"} />
                 </div>
               </div>
 

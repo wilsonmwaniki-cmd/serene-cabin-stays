@@ -25,6 +25,15 @@ export type AdminBooking = {
   rooms: number;
   notes: string | null;
   pod_allocations: BookingPodAllocation[];
+  payment_amount_kes: number | null;
+  payment_phone: string | null;
+  payment_provider: string | null;
+  payment_received_at: string | null;
+  payment_reference: string | null;
+  payment_request_id: string | null;
+  payment_request_location: string | null;
+  payment_requested_at: string | null;
+  payment_status: "unpaid" | "requested" | "paid" | "failed" | "refunded" | string;
   status: "pending" | "confirmed" | "cancelled";
   subtotal_kes: number | null;
   discount_kes: number | null;
@@ -129,6 +138,8 @@ export const useAdminBookings = () =>
           pod_name: allocations
             .map((allocation) => `${allocation.pod_name ?? podMap.get(allocation.pod_id)?.name ?? "Pod"} × ${allocation.rooms}`)
             .join(", "),
+          payment_status: b.payment_status ?? "unpaid",
+          payment_amount_kes: b.payment_amount_kes ?? b.total_kes ?? fallbackPricing.totalKes,
           total_kes: b.total_kes ?? fallbackPricing.totalKes,
           addons,
         } as AdminBooking;
