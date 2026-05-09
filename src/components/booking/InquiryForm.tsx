@@ -132,6 +132,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(null);
+  const [requestingPayment, setRequestingPayment] = useState(false);
+  const [paymentPromptSent, setPaymentPromptSent] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<Record<string, boolean>>({});
   const [waiverAccepted, setWaiverAccepted] = useState(false);
   const [promoInput, setPromoInput] = useState("");
@@ -490,6 +493,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     }
 
     setSubmitting(false);
+    setSubmittedBookingId(bookingId);
     setDone(true);
     toast({ title: "Inquiry received", description: "We'll be in touch within a few hours." });
 
@@ -529,14 +533,66 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     }).catch(() => {});
   };
 
+  const requestPaymentPrompt = async () => {
+    if (!submittedBookingId) return;
+
+    setRequestingPayment(true);
+
+    try {
+      const response = await fetch("/api/kopokopo-initiate-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookingId: submittedBookingId }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "Could not send payment prompt");
+      }
+
+      setPaymentPromptSent(true);
+      toast({
+        title: "M-Pesa prompt sent",
+        description: "Please check your phone and complete the payment.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send payment prompt";
+      toast({
+        title: "Payment prompt not sent",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setRequestingPayment(false);
+    }
+  };
+
   if (done) {
     return (
-      <div className="text-center py-12 px-6 bg-bone border border-border">
+      <div className="text-center py-12 px-6 bg-bone border border-border space-y-4">
         <div className="mx-auto w-12 h-12 rounded-full bg-sage-deep text-bone flex items-center justify-center mb-4">
           <Check size={22} />
         </div>
         <h3 className="font-display text-3xl text-sage-deep mb-2">Thank you</h3>
         <p className="text-muted-foreground max-w-md mx-auto">Your inquiry has reached us. We will confirm your stay personally within a few hours, then you can pay by M-Pesa to Till Number {MPESA_TILL_NUMBER}.</p>
+        <div className="flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={requestPaymentPrompt}
+            disabled={!submittedBookingId || requestingPayment}
+            className="inline-flex items-center justify-center bg-sage-deep hover:bg-sage text-bone px-6 py-3 text-sm uppercase tracking-[0.2em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {requestingPayment ? "Sending M-Pesa Prompt…" : "Pay Now by M-Pesa"}
+          </button>
+          <p className="text-xs text-muted-foreground max-w-md">
+            Tapping this will send an M-Pesa prompt to your phone number so you can pay directly from your Safaricom line.
+          </p>
+          {paymentPromptSent && (
+            <p className="text-sm text-sage-deep">M-Pesa prompt sent. Please check your phone.</p>
+          )}
+        </div>
       </div>
     );
   }
