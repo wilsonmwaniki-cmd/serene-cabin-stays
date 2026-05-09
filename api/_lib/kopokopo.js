@@ -1,4 +1,4 @@
-const DEFAULT_BASE_URL = "https://sandbox.kopokopo.com";
+const DEFAULT_BASE_URL = "https://app.kopokopo.com";
 const DEFAULT_TILL_NUMBER = "3128049";
 
 export const getKopoKopoConfig = (req) => {
