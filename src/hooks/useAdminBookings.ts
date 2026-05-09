@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calculateBookingPricing, type AppliedPromoCode, type PricingPod } from "@/lib/booking-pricing";
+import { calculateBookingPricingForAllocations, type AppliedPromoCode, type PricingPod } from "@/lib/booking-pricing";
+import type { Json } from "@/integrations/supabase/types";
+
+export type BookingPodAllocation = {
+  pod_id: string;
+  rooms: number;
+  pod_name?: string;
+};
 
 export type AdminBooking = {
   id: string;
@@ -17,6 +24,7 @@ export type AdminBooking = {
   children_12_plus: number;
   rooms: number;
   notes: string | null;
+  pod_allocations: BookingPodAllocation[];
   status: "pending" | "confirmed" | "cancelled";
   subtotal_kes: number | null;
   discount_kes: number | null;
@@ -54,43 +62,76 @@ export const useAdminBookings = () =>
         addonMap.set(row.booking_id, list);
       }
 
-      return (bookings ?? []).map((b) => ({
-        ...b,
-        pod_name: podMap.get(b.pod_id)?.name,
-        subtotal_kes: b.subtotal_kes,
-        discount_kes: b.discount_kes,
-        total_kes:
-          b.total_kes ??
-          calculateBookingPricing({
-            pod: podMap.get(b.pod_id),
-            nights: Math.max(
-              0,
-              Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000),
-            ),
-            adults: b.adults,
-            childrenUnder12: b.children,
-            children12Plus: b.children_12_plus ?? 0,
-            rooms: b.rooms,
-            selectedAddons: (addonMap.get(b.id) ?? []).map((addon) => ({
-              price_kes: addon.unit_price_kes,
-              pricing_unit: addon.pricing_unit as "per_night" | "per_night_per_adult" | "one_time",
-            })),
-            promo:
-              b.promo_code_text && b.promo_code_kind
-                ? ({
-                    id: "",
-                    code: b.promo_code_text,
-                    label: b.promo_code_text,
-                    kind: b.promo_code_kind,
-                    discount_type: "fixed",
-                    amount_kes: b.discount_kes ?? 0,
-                    percent_off: null,
-                  } satisfies AppliedPromoCode)
-                : null,
-          }).totalKes,
-        promo_code_text: b.promo_code_text,
-        promo_code_kind: b.promo_code_kind,
-        addons: addonMap.get(b.id) ?? [],
-      })) as AdminBooking[];
+      const parseAllocations = (raw: Json | null, fallbackPodId: string, fallbackRooms: number): BookingPodAllocation[] => {
+        if (!Array.isArray(raw) || raw.length === 0) {
+          return [{ pod_id: fallbackPodId, rooms: fallbackRooms, pod_name: podMap.get(fallbackPodId)?.name }];
+        }
+
+        const allocations = raw
+          .map((item) => {
+            if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+            const podId = typeof item.pod_id === "string" ? item.pod_id : null;
+            const rooms = typeof item.rooms === "number" ? item.rooms : Number(item.rooms ?? 0);
+            if (!podId || !Number.isFinite(rooms) || rooms <= 0) return null;
+            return {
+              pod_id: podId,
+              rooms,
+              pod_name: podMap.get(podId)?.name,
+            };
+          })
+          .filter((allocation): allocation is BookingPodAllocation => !!allocation);
+
+        return allocations.length > 0
+          ? allocations
+          : [{ pod_id: fallbackPodId, rooms: fallbackRooms, pod_name: podMap.get(fallbackPodId)?.name }];
+      };
+
+      return (bookings ?? []).map((b) => {
+        const allocations = parseAllocations(
+          (b as { pod_allocations?: Json | null }).pod_allocations ?? null,
+          b.pod_id,
+          b.rooms,
+        );
+        const addons = addonMap.get(b.id) ?? [];
+        const fallbackPricing = calculateBookingPricingForAllocations({
+          allocations: allocations.map((allocation) => ({
+            pod: podMap.get(allocation.pod_id),
+            rooms: allocation.rooms,
+          })),
+          nights: Math.max(
+            0,
+            Math.round((new Date(b.check_out).getTime() - new Date(b.check_in).getTime()) / 86400000),
+          ),
+          adults: b.adults,
+          childrenUnder12: b.children,
+          children12Plus: b.children_12_plus ?? 0,
+          selectedAddons: addons.map((addon) => ({
+            price_kes: addon.unit_price_kes,
+            pricing_unit: addon.pricing_unit as "per_night" | "per_night_per_adult" | "one_time",
+          })),
+          promo:
+            b.promo_code_text && b.promo_code_kind
+              ? ({
+                  id: "",
+                  code: b.promo_code_text,
+                  label: b.promo_code_text,
+                  kind: b.promo_code_kind,
+                  discount_type: "fixed",
+                  amount_kes: b.discount_kes ?? 0,
+                  percent_off: null,
+                } satisfies AppliedPromoCode)
+              : null,
+        });
+
+        return {
+          ...b,
+          pod_allocations: allocations,
+          pod_name: allocations
+            .map((allocation) => `${allocation.pod_name ?? podMap.get(allocation.pod_id)?.name ?? "Pod"} × ${allocation.rooms}`)
+            .join(", "),
+          total_kes: b.total_kes ?? fallbackPricing.totalKes,
+          addons,
+        } as AdminBooking;
+      });
     },
   });

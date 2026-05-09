@@ -15,13 +15,20 @@ export const createGoogleCalendarUrl = (booking: Pick<
   | "children_12_plus"
   | "rooms"
   | "notes"
+  | "pod_allocations"
 >) => {
   const title = `${booking.pod_name ?? "Booking"} — ${booking.guest_name}`;
+  const allocationSummary =
+    booking.pod_allocations?.length > 0
+      ? booking.pod_allocations
+          .map((allocation) => `${allocation.pod_name ?? "Pod"} × ${allocation.rooms}`)
+          .join(", ")
+      : booking.pod_name ?? "—";
   const details = [
     `Guest: ${booking.guest_name}`,
     `Email: ${booking.guest_email}`,
     `Phone: ${booking.guest_phone ?? "—"}`,
-    `Pod: ${booking.pod_name ?? "—"}`,
+    `Pods: ${allocationSummary}`,
     `Guests: ${booking.adults} adults, ${booking.children} children under 12, ${booking.children_12_plus} guests aged 12+`,
     `Rooms: ${booking.rooms}`,
     booking.notes ? `Notes: ${booking.notes}` : null,

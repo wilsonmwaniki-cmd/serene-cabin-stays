@@ -110,6 +110,7 @@ export type Database = {
           id: string
           notes: string | null
           pod_id: string
+          pod_allocations: Json | null
           promo_code_id: string | null
           promo_code_kind: Database["public"]["Enums"]["promo_code_kind"] | null
           promo_code_text: string | null
@@ -132,6 +133,7 @@ export type Database = {
           id?: string
           notes?: string | null
           pod_id: string
+          pod_allocations?: Json | null
           promo_code_id?: string | null
           promo_code_kind?: Database["public"]["Enums"]["promo_code_kind"] | null
           promo_code_text?: string | null
@@ -154,6 +156,7 @@ export type Database = {
           id?: string
           notes?: string | null
           pod_id?: string
+          pod_allocations?: Json | null
           promo_code_id?: string | null
           promo_code_kind?: Database["public"]["Enums"]["promo_code_kind"] | null
           promo_code_text?: string | null

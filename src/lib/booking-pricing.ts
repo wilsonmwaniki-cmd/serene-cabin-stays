@@ -21,6 +21,11 @@ export type AppliedPromoCode = {
   percent_off: number | null;
 };
 
+export type PodRoomAllocation = {
+  pod: PricingPod | undefined;
+  rooms: number;
+};
+
 export const SINGLE_NIGHT_RATE_KES = 5000;
 export const MULTI_NIGHT_RATE_KES = 4250;
 export const SINGLE_NIGHT_EXCLUDED_ADDONS = new Set(["full-meals"]);
@@ -34,6 +39,12 @@ export const effectiveNightlyRate = (pod: PricingPod | undefined, nights: number
 };
 
 export const podRoomSurcharge = (pod: PricingPod | undefined) => pod?.surcharge_kes ?? 0;
+
+export const allocationRoomTotal = (allocations: PodRoomAllocation[]) =>
+  allocations.reduce((sum, allocation) => sum + allocation.rooms, 0);
+
+export const allocationSurchargeSubtotal = (allocations: PodRoomAllocation[], nights: number) =>
+  allocations.reduce((sum, allocation) => sum + podRoomSurcharge(allocation.pod) * allocation.rooms * nights, 0);
 
 export const calcAddonLineTotal = (
   addon: Pick<Addon, "price_kes" | "pricing_unit">,
@@ -101,6 +112,54 @@ export const calculateBookingPricing = ({
     children12PlusSubtotal,
     childrenUnder12Subtotal,
     surchargeSubtotal,
+    addonsSubtotal,
+    subtotalKes,
+    discountKes,
+    totalKes: Math.max(0, subtotalKes - discountKes),
+  };
+};
+
+export const calculateBookingPricingForAllocations = ({
+  allocations,
+  nights,
+  adults,
+  childrenUnder12,
+  children12Plus,
+  selectedAddons,
+  promo,
+}: {
+  allocations: PodRoomAllocation[];
+  nights: number;
+  adults: number;
+  childrenUnder12: number;
+  children12Plus: number;
+  selectedAddons: Array<Pick<Addon, "price_kes" | "pricing_unit">>;
+  promo: AppliedPromoCode | null;
+}) => {
+  const primaryPod = allocations.find((allocation) => allocation.rooms > 0)?.pod;
+  const nightlyRate = effectiveNightlyRate(primaryPod, nights);
+  const roomSurcharge = allocationSurchargeSubtotal(allocations, nights);
+  const rooms = allocationRoomTotal(allocations);
+  const adultsSubtotal = nightlyRate * adults * nights;
+  const children12PlusSubtotal = nightlyRate * children12Plus * nights;
+  const childrenUnder12Subtotal = nightlyRate * 0.5 * childrenUnder12 * nights;
+  const billableGuests = adults + children12Plus;
+  const addonsSubtotal = selectedAddons.reduce(
+    (sum, addon) => sum + calcAddonLineTotal(addon, nights, rooms, billableGuests),
+    0,
+  );
+  const subtotalKes = adultsSubtotal + children12PlusSubtotal + childrenUnder12Subtotal + roomSurcharge + addonsSubtotal;
+  const discountKes = calcPromoDiscount(subtotalKes, promo, nights);
+
+  return {
+    nightlyRate,
+    roomSurcharge,
+    rooms,
+    billableGuests,
+    adultsSubtotal,
+    children12PlusSubtotal,
+    childrenUnder12Subtotal,
+    surchargeSubtotal: roomSurcharge,
     addonsSubtotal,
     subtotalKes,
     discountKes,

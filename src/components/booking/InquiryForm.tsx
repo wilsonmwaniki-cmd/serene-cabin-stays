@@ -22,7 +22,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   type AppliedPromoCode,
   calculateBookingPricing,
+  calculateBookingPricingForAllocations,
   calcAddonLineTotal,
+  podRoomSurcharge,
 } from "@/lib/booking-pricing";
 
 interface Pod {
@@ -33,6 +35,8 @@ interface Pod {
   surcharge_kes?: number;
   capacity: number;
 }
+
+type PodAvailabilityMap = Record<string, { available: number; total: number }>;
 
 const normalizeName = (value: string) =>
   value
@@ -104,6 +108,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const minCheckIn = format(today, "yyyy-MM-dd");
   const maxCheckIn = format(maxCheckInDate, "yyyy-MM-dd");
   const maxCheckOut = format(maxBookingDate, "yyyy-MM-dd");
+  const supportsMixedPods = !defaultPodId && pods.length > 1;
+  const initialRoomSelections = Object.fromEntries(
+    pods.map((pod, index) => [pod.id, defaultPodId ? (pod.id === defaultPodId ? 1 : 0) : (index === 0 ? 1 : 0)]),
+  ) as Record<string, number>;
 
   const [params] = useSearchParams();
   const [podId, setPodId] = useState(defaultPodId ?? pods[0]?.id ?? "");
@@ -114,11 +122,12 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const [childrenUnder12Count, setChildrenUnder12Count] = useState(Number(params.get("children") ?? 0));
   const [children12PlusCount, setChildren12PlusCount] = useState(Number(params.get("children12plus") ?? 0));
   const [rooms, setRooms] = useState(Number(params.get("rooms") ?? 1));
+  const [podRoomSelections, setPodRoomSelections] = useState<Record<string, number>>(initialRoomSelections);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
-  const [availability, setAvailability] = useState<{ available: number; total: number } | null>(null);
+  const [availability, setAvailability] = useState<PodAvailabilityMap | null>(null);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -136,6 +145,20 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const effectiveMaxCheckOut = format(effectiveMaxCheckOutDate, "yyyy-MM-dd");
   const totalGuests = adults + childrenUnder12Count + children12PlusCount;
   const minimumRooms = Math.max(1, Math.ceil(totalGuests / 2));
+  const selectedPodAllocations = (supportsMixedPods
+    ? pods
+        .map((pod) => ({ pod_id: pod.id, rooms: Math.max(0, podRoomSelections[pod.id] ?? 0) }))
+        .filter((allocation) => allocation.rooms > 0)
+    : [{ pod_id: podId, rooms }]);
+  const totalSelectedRooms = selectedPodAllocations.reduce((sum, allocation) => sum + allocation.rooms, 0);
+  const selectedPodsLabel = selectedPodAllocations
+    .map((allocation) => {
+      const pod = pods.find((item) => item.id === allocation.pod_id);
+      return `${pod?.name ?? "Pod"} × ${allocation.rooms}`;
+    })
+    .join(", ");
+  const primaryPod = pods.find((p) => p.id === selectedPodAllocations[0]?.pod_id) ?? pods.find((p) => p.id === podId);
+  const availabilityKey = selectedPodAllocations.map((allocation) => `${allocation.pod_id}:${allocation.rooms}`).join("|");
 
   useEffect(() => {
     const minimumStayEnd = format(new Date(new Date(checkIn).getTime() + 2 * 86400000), "yyyy-MM-dd");
@@ -147,29 +170,82 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   }, [checkIn, checkOut, maxCheckOut, effectiveMaxCheckOut]);
 
   useEffect(() => {
+    if (supportsMixedPods) return;
     if (rooms < minimumRooms) {
       setRooms(minimumRooms);
     }
-  }, [rooms, minimumRooms]);
+  }, [rooms, minimumRooms, supportsMixedPods]);
 
   useEffect(() => {
-    if (!podId || !checkIn || !checkOut) return;
-    if (new Date(checkOut) <= new Date(checkIn)) return;
-    setChecking(true);
-    setAvailability(null);
-    supabase
-      .rpc("pod_availability", { _pod_id: podId, _check_in: checkIn, _check_out: checkOut })
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          setAvailability({ available: data[0].units_available, total: data[0].units_total });
-        }
-        setChecking(false);
-      });
-  }, [podId, checkIn, checkOut]);
+    if (!supportsMixedPods) return;
+    if (totalSelectedRooms >= minimumRooms) return;
 
-  const pod = pods.find((p) => p.id === podId);
+    const shortage = minimumRooms - totalSelectedRooms;
+    const preferredPodId = selectedPodAllocations[0]?.pod_id ?? pods[0]?.id;
+
+    if (!preferredPodId) return;
+
+    setPodRoomSelections((current) => ({
+      ...current,
+      [preferredPodId]: Math.max(0, current[preferredPodId] ?? 0) + shortage,
+    }));
+  }, [supportsMixedPods, totalSelectedRooms, minimumRooms, selectedPodAllocations, pods]);
+
+  useEffect(() => {
+    if (selectedPodAllocations.length === 0 || !checkIn || !checkOut) return;
+    if (new Date(checkOut) <= new Date(checkIn)) return;
+    let cancelled = false;
+
+    const loadAvailability = async () => {
+      setChecking(true);
+      setAvailability(null);
+
+      try {
+        const results = await Promise.all(
+          selectedPodAllocations.map(async (allocation) => {
+            const { data, error } = await supabase.rpc("pod_availability", {
+              _pod_id: allocation.pod_id,
+              _check_in: checkIn,
+              _check_out: checkOut,
+            });
+            return {
+              pod_id: allocation.pod_id,
+              result: !error && data && data.length > 0
+                ? { available: data[0].units_available, total: data[0].units_total }
+                : null,
+            };
+          }),
+        );
+
+        if (cancelled) return;
+
+        const availabilityMap = Object.fromEntries(
+          results
+            .filter((result) => !!result.result)
+            .map((result) => [result.pod_id, result.result as { available: number; total: number }]),
+        );
+        setAvailability(availabilityMap);
+      } finally {
+        if (!cancelled) {
+          setChecking(false);
+        }
+      }
+    };
+
+    void loadAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [availabilityKey, checkIn, checkOut]);
+
   const nights = Math.max(0, differenceInCalendarDays(new Date(checkOut), new Date(checkIn)));
-  const enoughUnits = availability ? availability.available >= rooms : false;
+  const enoughUnits = selectedPodAllocations.length > 0
+    && totalSelectedRooms >= minimumRooms
+    && selectedPodAllocations.every((allocation) => {
+      const podAvailability = availability?.[allocation.pod_id];
+      return !!podAvailability && podAvailability.available >= allocation.rooms;
+    });
 
   const visibleAddons = useMemo(() => addons, [addons]);
 
@@ -179,9 +255,24 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   );
 
   const pricing = useMemo(
-    () =>
-      calculateBookingPricing({
-        pod,
+    () => {
+      if (supportsMixedPods) {
+        return calculateBookingPricingForAllocations({
+          allocations: selectedPodAllocations.map((allocation) => ({
+            pod: pods.find((pod) => pod.id === allocation.pod_id),
+            rooms: allocation.rooms,
+          })),
+          nights,
+          adults,
+          childrenUnder12: childrenUnder12Count,
+          children12Plus: children12PlusCount,
+          selectedAddons: chosenAddons,
+          promo: appliedPromo,
+        });
+      }
+
+      return calculateBookingPricing({
+        pod: primaryPod,
         nights,
         adults,
         childrenUnder12: childrenUnder12Count,
@@ -189,8 +280,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         rooms,
         selectedAddons: chosenAddons,
         promo: appliedPromo,
-      }),
-    [pod, nights, adults, childrenUnder12Count, children12PlusCount, rooms, chosenAddons, appliedPromo],
+      });
+    },
+    [supportsMixedPods, selectedPodAllocations, primaryPod, nights, adults, childrenUnder12Count, children12PlusCount, rooms, chosenAddons, appliedPromo, pods],
   );
 
   const nightlyRate = pricing.nightlyRate;
@@ -204,6 +296,18 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const subtotalKes = pricing.subtotalKes;
   const discountKes = pricing.discountKes;
   const grandTotal = pricing.totalKes;
+  const surchargeBreakdown = selectedPodAllocations
+    .map((allocation) => {
+      const pod = pods.find((item) => item.id === allocation.pod_id);
+      const surcharge = podRoomSurcharge(pod);
+      return {
+        pod_name: pod?.name ?? "Pod",
+        rooms: allocation.rooms,
+        surcharge,
+        total: surcharge * allocation.rooms * nights,
+      };
+    })
+    .filter((line) => line.surcharge > 0);
 
   useEffect(() => {
     if (nights < 2 && appliedPromo) {
@@ -313,8 +417,15 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       });
       return;
     }
-    if (!pod) return;
-    if (rooms < minimumRooms) {
+    if (selectedPodAllocations.length === 0) {
+      toast({
+        title: "Choose your cabins",
+        description: "Please select at least one room before booking.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (totalSelectedRooms < minimumRooms) {
       toast({
         title: "More rooms needed",
         description: `Each cabin holds up to 2 guests, so ${totalGuests} guests need at least ${minimumRooms} room${minimumRooms === 1 ? "" : "s"}.`,
@@ -332,7 +443,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       .from("bookings")
       .insert({
         id: bookingId,
-        pod_id: pod.id,
+        pod_id: selectedPodAllocations[0].pod_id,
         guest_name: normalizedName,
         guest_email: normalizedEmail,
         guest_phone: normalizedPhone,
@@ -341,7 +452,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         adults,
         children: childrenUnder12Count,
         children_12_plus: children12PlusCount,
-        rooms,
+        rooms: totalSelectedRooms,
+        pod_allocations: selectedPodAllocations,
         notes: notes.trim() || null,
         subtotal_kes: subtotalKes,
         discount_kes: discountKes,
@@ -388,14 +500,14 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       name: normalizedName,
       email: normalizedEmail,
       phone: normalizedPhone,
-      podName: pod.name,
+      podName: selectedPodsLabel,
       checkIn: fmt(checkIn),
       checkOut: fmt(checkOut),
       adults,
       children: childrenUnder12Count,
       childrenUnder12: childrenUnder12Count,
       children12Plus: children12PlusCount,
-      rooms,
+      rooms: totalSelectedRooms,
       notes: notes.trim() || undefined,
       subtotalKes,
       discountKes,
@@ -430,16 +542,51 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   return (
     <form onSubmit={submit} className="space-y-6">
       <div className="grid md:grid-cols-2 gap-4">
-        <Field label="Pod">
-          <select value={podId} onChange={(e) => setPodId(e.target.value)} className="w-full bg-transparent font-display text-lg outline-none">
-            {pods.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} — KES {(p.price_kes + (p.surcharge_kes ?? 0)).toLocaleString()}/night</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Rooms">
-          <input type="number" min={minimumRooms} max={10} value={rooms} onChange={(e) => setRooms(Math.max(minimumRooms, Number(e.target.value) || minimumRooms))} className="w-full bg-transparent font-display text-lg outline-none" />
-        </Field>
+        {supportsMixedPods ? (
+          <>
+            <Field label="Cabins">
+              <div className="space-y-3">
+                {pods.map((pod) => (
+                  <div key={pod.id} className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-display text-base">{pod.name}</div>
+                      <div className="text-xs text-muted-foreground">KES {(pod.price_kes + (pod.surcharge_kes ?? 0)).toLocaleString()}/night</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={podRoomSelections[pod.id] ?? 0}
+                      onChange={(event) =>
+                        setPodRoomSelections((current) => ({
+                          ...current,
+                          [pod.id]: Math.max(0, Number(event.target.value) || 0),
+                        }))
+                      }
+                      className="w-24 bg-transparent text-right font-display text-lg outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Field>
+            <Field label="Rooms Selected">
+              <div className="font-display text-lg">{totalSelectedRooms}</div>
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Pod">
+              <select value={podId} onChange={(e) => setPodId(e.target.value)} className="w-full bg-transparent font-display text-lg outline-none">
+                {pods.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — KES {(p.price_kes + (p.surcharge_kes ?? 0)).toLocaleString()}/night</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Rooms">
+              <input type="number" min={minimumRooms} max={10} value={rooms} onChange={(e) => setRooms(Math.max(minimumRooms, Number(e.target.value) || minimumRooms))} className="w-full bg-transparent font-display text-lg outline-none" />
+            </Field>
+          </>
+        )}
         <Field label="Check In">
           <Popover>
             <PopoverTrigger className="flex w-full items-center justify-between gap-3 bg-transparent font-display text-lg outline-none text-left">
@@ -490,17 +637,46 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
       <p className="text-xs text-muted-foreground">
         Booking note: each cabin holds a maximum of 2 guests. {totalGuests} guest{totalGuests === 1 ? "" : "s"} currently require {minimumRooms} room{minimumRooms === 1 ? "" : "s"}.
       </p>
+      {supportsMixedPods && (
+        <p className="text-xs text-muted-foreground">You can mix Pod 1 and Pod 2 in one booking by splitting your rooms across the cabins above.</p>
+      )}
       <p className="text-xs text-muted-foreground">Minimum stay: 2 nights.</p>
       <p className="text-xs text-muted-foreground">Maximum stay: 30 nights.</p>
 
       <div className="border-l-2 border-ember pl-4 py-2 bg-linen/40 text-sm flex items-center gap-2 min-h-[44px]">
         {checking ? (
           <><Loader2 className="animate-spin" size={16} /> Checking availability…</>
-        ) : availability ? (
+        ) : selectedPodAllocations.length > 0 ? (
           enoughUnits ? (
-            <><Check size={16} className="text-sage-deep" /> {availability.available} of {availability.total} units available — {nights} night{nights !== 1 && "s"}</>
+            <div className="space-y-1">
+              {selectedPodAllocations.map((allocation) => {
+                const pod = pods.find((item) => item.id === allocation.pod_id);
+                const podAvailability = availability?.[allocation.pod_id];
+                return (
+                  <div key={allocation.pod_id} className="flex items-center gap-2">
+                    <Check size={16} className="text-sage-deep" />
+                    <span>{pod?.name ?? "Pod"}: {podAvailability?.available ?? 0} of {podAvailability?.total ?? 0} units available</span>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <><AlertCircle size={16} className="text-destructive" /> Only {availability.available} unit{availability.available !== 1 && "s"} available for these dates.</>
+            <div className="space-y-1">
+              {selectedPodAllocations.map((allocation) => {
+                const pod = pods.find((item) => item.id === allocation.pod_id);
+                const podAvailability = availability?.[allocation.pod_id];
+                const shortBy = allocation.rooms - (podAvailability?.available ?? 0);
+                return (
+                  <div key={allocation.pod_id} className="flex items-center gap-2">
+                    <AlertCircle size={16} className="text-destructive" />
+                    <span>
+                      {pod?.name ?? "Pod"}: only {podAvailability?.available ?? 0} unit{(podAvailability?.available ?? 0) === 1 ? "" : "s"} available
+                      {shortBy > 0 ? `, short by ${shortBy}` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           )
         ) : (
           <span className="text-muted-foreground">Choose your dates to see availability.</span>
@@ -518,7 +694,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <ul className="divide-y divide-border">
             {visibleAddons.map((a) => {
               const checked = !!selectedAddons[a.id];
-              const lineTotal = calcAddonLineTotal(a, Math.max(nights, 1), rooms, billableGuests);
+              const lineTotal = calcAddonLineTotal(a, Math.max(nights, 1), totalSelectedRooms, billableGuests);
               return (
                 <li key={a.id}>
                   <label className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-linen/40 transition-colors">
@@ -572,14 +748,14 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
             <span>KES {childrenUnder12Subtotal.toLocaleString()}</span>
           </div>
         )}
-        {surchargeSubtotal > 0 && (
-          <div className="flex justify-between">
+        {surchargeSubtotal > 0 && surchargeBreakdown.map((line) => (
+          <div key={line.pod_name} className="flex justify-between">
             <span className="text-muted-foreground">
-              {pod?.name} surcharge ({rooms} room{rooms !== 1 && "s"} × {nights} night{nights !== 1 && "s"} @ KES {roomSurcharge.toLocaleString()})
+              {line.pod_name} surcharge ({line.rooms} room{line.rooms !== 1 && "s"} × {nights} night{nights !== 1 && "s"} @ KES {line.surcharge.toLocaleString()})
             </span>
-            <span>KES {surchargeSubtotal.toLocaleString()}</span>
+            <span>KES {line.total.toLocaleString()}</span>
           </div>
-        )}
+        ))}
         {addonsTotal > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Add-ons</span>
