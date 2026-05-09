@@ -496,6 +496,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     setSubmittedBookingId(bookingId);
     setDone(true);
     toast({ title: "Inquiry received", description: "We'll be in touch within a few hours." });
+    void requestPaymentPrompt(bookingId);
 
     // Guest confirmation + admin alert (fire-and-forget)
     const fmt = (d: string) => {
@@ -533,8 +534,8 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     }).catch(() => {});
   };
 
-  const requestPaymentPrompt = async () => {
-    if (!submittedBookingId) return;
+  const requestPaymentPrompt = async (bookingId = submittedBookingId) => {
+    if (!bookingId) return;
 
     setRequestingPayment(true);
 
@@ -544,7 +545,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ bookingId: submittedBookingId }),
+        body: JSON.stringify({ bookingId }),
       });
 
       const body = await response.json().catch(() => ({}));
@@ -576,7 +577,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
           <Check size={22} />
         </div>
         <h3 className="font-display text-3xl text-sage-deep mb-2">Thank you</h3>
-        <p className="text-muted-foreground max-w-md mx-auto">Your inquiry has reached us. We will confirm your stay personally within a few hours, then you can pay by M-Pesa to Till Number {MPESA_TILL_NUMBER}.</p>
+        <p className="text-muted-foreground max-w-md mx-auto">Your inquiry has reached us. We are also sending an M-Pesa prompt to your phone so you can pay directly by Till Number {MPESA_TILL_NUMBER}.</p>
         <div className="flex flex-col items-center gap-3">
           <button
             type="button"
@@ -584,10 +585,10 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
             disabled={!submittedBookingId || requestingPayment}
             className="inline-flex items-center justify-center bg-sage-deep hover:bg-sage text-bone px-6 py-3 text-sm uppercase tracking-[0.2em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {requestingPayment ? "Sending M-Pesa Prompt…" : "Pay Now by M-Pesa"}
+            {requestingPayment ? "Sending M-Pesa Prompt…" : paymentPromptSent ? "Send M-Pesa Prompt Again" : "Pay Now by M-Pesa"}
           </button>
           <p className="text-xs text-muted-foreground max-w-md">
-            Tapping this will send an M-Pesa prompt to your phone number so you can pay directly from your Safaricom line.
+            If the payment prompt does not reach your phone immediately, use this button to try again.
           </p>
           {paymentPromptSent && (
             <p className="text-sm text-sage-deep">M-Pesa prompt sent. Please check your phone.</p>
