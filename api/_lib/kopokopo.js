@@ -1,10 +1,23 @@
-const DEFAULT_BASE_URL = "https://app.kopokopo.com";
+const DEFAULT_AUTH_BASE_URL = "https://app.kopokopo.com";
+const DEFAULT_API_BASE_URL = "https://api.kopokopo.com";
 const DEFAULT_TILL_NUMBER = "3128049";
 
 export const getKopoKopoConfig = (req) => {
   const clientId = process.env.KOPOKOPO_CLIENT_ID;
   const clientSecret = process.env.KOPOKOPO_CLIENT_SECRET;
-  const baseUrl = (process.env.KOPOKOPO_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const legacyBaseUrl = (process.env.KOPOKOPO_BASE_URL || "").replace(/\/$/, "");
+  const authBaseUrl = (
+    process.env.KOPOKOPO_AUTH_BASE_URL
+    || (legacyBaseUrl.includes("sandbox") ? legacyBaseUrl : "")
+    || (legacyBaseUrl.includes("app.kopokopo.com") ? legacyBaseUrl : "")
+    || DEFAULT_AUTH_BASE_URL
+  ).replace(/\/$/, "");
+  const apiBaseUrl = (
+    process.env.KOPOKOPO_API_BASE_URL
+    || (legacyBaseUrl.includes("sandbox") ? legacyBaseUrl : "")
+    || (legacyBaseUrl.includes("api.kopokopo.com") ? legacyBaseUrl : "")
+    || DEFAULT_API_BASE_URL
+  ).replace(/\/$/, "");
   const tillNumber = process.env.KOPOKOPO_TILL_NUMBER || DEFAULT_TILL_NUMBER;
   const callbackUrl = process.env.KOPOKOPO_CALLBACK_URL
     || `${(req.headers["x-forwarded-proto"] || "https").split(",")[0]}://${req.headers.host}/api/kopokopo-callback`;
@@ -12,7 +25,8 @@ export const getKopoKopoConfig = (req) => {
   return {
     clientId,
     clientSecret,
-    baseUrl,
+    authBaseUrl,
+    apiBaseUrl,
     tillNumber,
     callbackUrl,
   };
@@ -31,7 +45,7 @@ export const getKopoKopoToken = async (config) => {
     grant_type: "client_credentials",
   });
 
-  const response = await fetch(`${config.baseUrl}/oauth/token`, {
+  const response = await fetch(`${config.authBaseUrl}/oauth/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -61,7 +75,7 @@ export const splitGuestName = (fullName = "") => {
 export const createIncomingPayment = async ({ accessToken, config, booking }) => {
   const { firstName, lastName } = splitGuestName(booking.guest_name);
 
-  const response = await fetch(`${config.baseUrl}/api/v2/incoming_payments`, {
+  const response = await fetch(`${config.apiBaseUrl}/api/v2/incoming_payments`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,

@@ -534,8 +534,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
     }).catch(() => {});
   };
 
-  const requestPaymentPrompt = async (bookingId = submittedBookingId) => {
-    if (!bookingId) return;
+  const requestPaymentPrompt = async (bookingId?: string) => {
+    const targetBookingId = typeof bookingId === "string" ? bookingId : submittedBookingId;
+    if (!targetBookingId) return;
 
     setRequestingPayment(true);
 
@@ -545,7 +546,7 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ bookingId }),
+        body: JSON.stringify({ bookingId: targetBookingId }),
       });
 
       const body = await response.json().catch(() => ({}));
@@ -581,7 +582,9 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
         <div className="flex flex-col items-center gap-3">
           <button
             type="button"
-            onClick={requestPaymentPrompt}
+            onClick={() => {
+              void requestPaymentPrompt();
+            }}
             disabled={!submittedBookingId || requestingPayment}
             className="inline-flex items-center justify-center bg-sage-deep hover:bg-sage text-bone px-6 py-3 text-sm uppercase tracking-[0.2em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
