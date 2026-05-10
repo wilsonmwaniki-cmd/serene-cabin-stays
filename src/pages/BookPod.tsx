@@ -77,13 +77,16 @@ const BookPod = () => {
                 <Users size={14} /> Sleeps {pod.capacity}
               </span>
             </div>
+            <p className="text-sm text-muted-foreground mt-5">
+              Need more space for a group? You can add rooms from both Pod 1 and Pod 2 in the booking form below.
+            </p>
           </div>
         </div>
       </section>
 
       <section className="bg-linen/50 py-16 md:py-24">
         <div className="container max-w-3xl">
-          <InquiryForm pods={[pod]} defaultPodId={pod.id} />
+          <InquiryForm pods={pods} preferredPodId={pod.id} />
         </div>
       </section>
     </>

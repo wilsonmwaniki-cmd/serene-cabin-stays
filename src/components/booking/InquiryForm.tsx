@@ -76,6 +76,7 @@ const schema = z.object({
 interface Props {
   pods: Pod[];
   defaultPodId?: string;
+  preferredPodId?: string;
 }
 
 const WAIVER_BULLETS = [
@@ -99,7 +100,7 @@ const WAIVER_TERMS = [
 const MAX_STAY_NIGHTS = 30;
 const MPESA_TILL_NUMBER = "3128049";
 
-export const InquiryForm = ({ pods, defaultPodId }: Props) => {
+export const InquiryForm = ({ pods, defaultPodId, preferredPodId }: Props) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const maxBookingDate = new Date(today);
@@ -109,13 +110,19 @@ export const InquiryForm = ({ pods, defaultPodId }: Props) => {
   const minCheckIn = format(today, "yyyy-MM-dd");
   const maxCheckIn = format(maxCheckInDate, "yyyy-MM-dd");
   const maxCheckOut = format(maxBookingDate, "yyyy-MM-dd");
+  const selectedStartingPodId = defaultPodId ?? preferredPodId ?? pods[0]?.id ?? "";
   const supportsMixedPods = !defaultPodId && pods.length > 1;
   const initialRoomSelections = Object.fromEntries(
-    pods.map((pod, index) => [pod.id, defaultPodId ? (pod.id === defaultPodId ? 1 : 0) : (index === 0 ? 1 : 0)]),
+    pods.map((pod, index) => [
+      pod.id,
+      selectedStartingPodId
+        ? (pod.id === selectedStartingPodId ? 1 : 0)
+        : (index === 0 ? 1 : 0),
+    ]),
   ) as Record<string, number>;
 
   const [params] = useSearchParams();
-  const [podId, setPodId] = useState(defaultPodId ?? pods[0]?.id ?? "");
+  const [podId, setPodId] = useState(selectedStartingPodId);
   const [checkIn, setCheckIn] = useState(params.get("in") ?? format(new Date(Date.now() + 86400000), "yyyy-MM-dd"));
   const [checkOut, setCheckOut] = useState(params.get("out") ?? format(new Date(Date.now() + 3 * 86400000), "yyyy-MM-dd"));
   const minCheckOut = format(new Date(new Date(checkIn).getTime() + 2 * 86400000), "yyyy-MM-dd");
