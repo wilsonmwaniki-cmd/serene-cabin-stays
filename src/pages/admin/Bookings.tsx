@@ -229,6 +229,12 @@ const AdminBookings = () => {
     }
 
     setBusyId(booking.id);
+    const popup = window.open("", "_blank");
+
+    if (popup) {
+      popup.document.write("<p style=\"font-family: sans-serif; padding: 24px;\">Preparing WhatsApp message…</p>");
+    }
+
     try {
       const response = await fetch("/api/create-payment-link", {
         method: "POST",
@@ -248,8 +254,15 @@ const AdminBookings = () => {
       }
 
       const message = createApprovalWhatsAppMessage(booking, body?.payUrl);
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+      const targetUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+      if (popup) {
+        popup.location.href = targetUrl;
+      } else {
+        window.location.href = targetUrl;
+      }
     } catch (error) {
+      if (popup) popup.close();
       const message = error instanceof Error ? error.message : "Could not prepare the WhatsApp approval";
       toast({
         title: "WhatsApp message not ready",
