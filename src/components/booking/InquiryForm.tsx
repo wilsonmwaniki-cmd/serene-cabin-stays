@@ -79,6 +79,37 @@ interface Props {
   preferredPodId?: string;
 }
 
+const buildInitialRoomSelections = ({
+  pods,
+  startingPodId,
+  requestedRooms,
+}: {
+  pods: Pod[];
+  startingPodId: string;
+  requestedRooms: number;
+}) => {
+  const selections = Object.fromEntries(pods.map((pod) => [pod.id, 0])) as Record<string, number>;
+  const orderedPods = [
+    ...pods.filter((pod) => pod.id === startingPodId),
+    ...pods.filter((pod) => pod.id !== startingPodId),
+  ];
+
+  let remaining = Math.max(1, requestedRooms);
+  for (const pod of orderedPods) {
+    if (remaining <= 0) break;
+    const allowed = Math.max(0, pod.total_units || 0);
+    const assigned = Math.min(remaining, allowed || remaining);
+    selections[pod.id] = assigned;
+    remaining -= assigned;
+  }
+
+  if (orderedPods.length > 0 && Object.values(selections).every((value) => value === 0)) {
+    selections[orderedPods[0].id] = 1;
+  }
+
+  return selections;
+};
+
 const WAIVER_BULLETS = [
   "Slipping, falling or injury in and around construction sites, or general terrain, which may be slippery, wet or contain other hazards present.",
   "Scratches or other injuries caused by stalls or enclosures, grooming tools and other equine equipment.",
@@ -101,6 +132,7 @@ const MAX_STAY_NIGHTS = 30;
 const MPESA_TILL_NUMBER = "3128049";
 
 export const InquiryForm = ({ pods, defaultPodId, preferredPodId }: Props) => {
+  const [params] = useSearchParams();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const maxBookingDate = new Date(today);
@@ -110,18 +142,14 @@ export const InquiryForm = ({ pods, defaultPodId, preferredPodId }: Props) => {
   const minCheckIn = format(today, "yyyy-MM-dd");
   const maxCheckIn = format(maxCheckInDate, "yyyy-MM-dd");
   const maxCheckOut = format(maxBookingDate, "yyyy-MM-dd");
+  const requestedRooms = Math.max(1, Number(params.get("rooms") ?? 1));
   const selectedStartingPodId = defaultPodId ?? preferredPodId ?? pods[0]?.id ?? "";
-  const supportsMixedPods = !defaultPodId && pods.length > 1;
-  const initialRoomSelections = Object.fromEntries(
-    pods.map((pod, index) => [
-      pod.id,
-      selectedStartingPodId
-        ? (pod.id === selectedStartingPodId ? 1 : 0)
-        : (index === 0 ? 1 : 0),
-    ]),
-  ) as Record<string, number>;
-
-  const [params] = useSearchParams();
+  const supportsMixedPods = pods.length > 1;
+  const initialRoomSelections = buildInitialRoomSelections({
+    pods,
+    startingPodId: selectedStartingPodId,
+    requestedRooms,
+  });
   const [podId, setPodId] = useState(selectedStartingPodId);
   const [checkIn, setCheckIn] = useState(params.get("in") ?? format(new Date(Date.now() + 86400000), "yyyy-MM-dd"));
   const [checkOut, setCheckOut] = useState(params.get("out") ?? format(new Date(Date.now() + 3 * 86400000), "yyyy-MM-dd"));
@@ -129,7 +157,7 @@ export const InquiryForm = ({ pods, defaultPodId, preferredPodId }: Props) => {
   const [adults, setAdults] = useState(Number(params.get("adults") ?? 2));
   const [childrenUnder12Count, setChildrenUnder12Count] = useState(Number(params.get("children") ?? 0));
   const [children12PlusCount, setChildren12PlusCount] = useState(Number(params.get("children12plus") ?? 0));
-  const [rooms, setRooms] = useState(Number(params.get("rooms") ?? 1));
+  const [rooms, setRooms] = useState(requestedRooms);
   const [podRoomSelections, setPodRoomSelections] = useState<Record<string, number>>(initialRoomSelections);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -624,12 +652,12 @@ export const InquiryForm = ({ pods, defaultPodId, preferredPodId }: Props) => {
                     <input
                       type="number"
                       min={0}
-                      max={10}
+                      max={Math.max(0, pod.total_units)}
                       value={podRoomSelections[pod.id] ?? 0}
                       onChange={(event) =>
                         setPodRoomSelections((current) => ({
                           ...current,
-                          [pod.id]: Math.max(0, Number(event.target.value) || 0),
+                          [pod.id]: Math.max(0, Math.min(Math.max(0, pod.total_units), Number(event.target.value) || 0)),
                         }))
                       }
                       className="w-24 bg-transparent text-right font-display text-lg outline-none"

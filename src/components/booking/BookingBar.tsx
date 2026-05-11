@@ -6,6 +6,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { usePods } from "@/hooks/usePods";
 
 export type BookingQuery = {
   checkIn: Date;
@@ -34,6 +35,7 @@ const maxBookDate = todayPlus(MAX_BOOKING_WINDOW_DAYS);
 
 export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
   const navigate = useNavigate();
+  const { data: pods = [] } = usePods();
   const [checkIn, setCheckIn] = useState<Date>(todayPlus(1));
   const [checkOut, setCheckOut] = useState<Date>(todayPlus(3));
   const [rooms, setRooms] = useState(1);
@@ -42,6 +44,8 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
   const [children12Plus, setChildren12Plus] = useState(0);
   const totalGuests = adults + childrenUnder12 + children12Plus;
   const minimumRooms = Math.max(1, Math.ceil(totalGuests / 2));
+  const totalUnits = Math.max(1, pods.reduce((sum, pod) => sum + Math.max(0, pod.total_units || 0), 0));
+  const roomChoicesUpperBound = Math.max(minimumRooms, totalUnits);
   const maxStayCheckOut = new Date(checkIn);
   maxStayCheckOut.setDate(maxStayCheckOut.getDate() + MAX_STAY_NIGHTS);
   const latestCheckOut = maxStayCheckOut > maxBookDate ? maxBookDate : maxStayCheckOut;
@@ -117,7 +121,7 @@ export const BookingBar = ({ variant = "floating", onSubmit }: Props) => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Array.from({ length: 10 }, (_, i) => i + 1).filter((n) => n >= minimumRooms).map((n) => (
+            {Array.from({ length: roomChoicesUpperBound }, (_, i) => i + 1).filter((n) => n >= minimumRooms).map((n) => (
               <SelectItem key={n} value={String(n)}>{n} {n === 1 ? "Room" : "Rooms"}</SelectItem>
             ))}
           </SelectContent>
