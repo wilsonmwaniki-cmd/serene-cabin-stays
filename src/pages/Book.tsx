@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, Maximize2, Users } from "lucide-react";
 import { usePods } from "@/hooks/usePods";
+import { InquiryForm } from "@/components/booking/InquiryForm";
 import pod1 from "@/assets/pod-1.jpg";
 import pod2 from "@/assets/pod-2.jpg";
 
@@ -68,6 +69,21 @@ const Book = () => {
           );
         })}
       </div>
+
+      {pods.length > 1 && (
+        <section className="mt-16 md:mt-20 bg-linen/50 p-8 md:p-12">
+          <p className="text-xs uppercase tracking-[0.3em] text-ember mb-3">Group booking</p>
+          <h2 className="font-display text-3xl md:text-4xl text-sage-deep mb-4">
+            Need both Pod 1 and Pod 2 in one booking?
+          </h2>
+          <p className="text-foreground/75 max-w-2xl mb-8">
+            Use this form to split your rooms across both pods in a single booking request.
+          </p>
+          <div className="max-w-4xl">
+            <InquiryForm pods={pods} />
+          </div>
+        </section>
+      )}
     </section>
   );
 };

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { sendEmail } from "@/lib/send-email";
@@ -14,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { CalendarPlus, Check, CreditCard, MessageCircle, RefreshCcw, RotateCcw, X } from "lucide-react";
+import { CalendarPlus, Check, CreditCard, MessageCircle, ReceiptText, RefreshCcw, RotateCcw, X } from "lucide-react";
 
 const statusVariant = (s: string) =>
   s === "confirmed" ? "default" : s === "cancelled" ? "destructive" : "secondary";
@@ -291,6 +292,11 @@ const AdminBookings = () => {
                     <CreditCard size={14} className="mr-1" /> Send M-Pesa Prompt
                   </Button>
                 )}
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={`/admin/bills?booking=${b.id}`}>
+                    <ReceiptText size={14} className="mr-1" /> Extra Bill
+                  </Link>
+                </Button>
                 {b.payment_request_location && (
                   <Button size="sm" variant="outline" onClick={() => refreshPaymentStatus(b)} disabled={busyId === b.id}>
                     <RefreshCcw size={14} className="mr-1" /> Refresh Payment

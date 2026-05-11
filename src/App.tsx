@@ -19,12 +19,14 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminBookings from "./pages/admin/Bookings";
 import AdminCalendar from "./pages/admin/Calendar";
 import AdminExpenses from "./pages/admin/Expenses";
+import AdminBills from "./pages/admin/Bills";
 import AdminMessages from "./pages/admin/Messages";
 import AdminPods from "./pages/admin/Pods";
 import AdminAddons from "./pages/admin/Addons";
 import AdminCodes from "./pages/admin/Codes";
 import AdminContent from "./pages/admin/Content";
 import AdminGallery from "./pages/admin/Gallery";
+import AdminRestaurantMenu from "./pages/admin/RestaurantMenu";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -53,10 +55,12 @@ const App = () => (
             <Route path="bookings" element={<AdminBookings />} />
             <Route path="calendar" element={<AdminCalendar />} />
             <Route path="expenses" element={<AdminExpenses />} />
+            <Route path="bills" element={<AdminBills />} />
             <Route path="messages" element={<AdminMessages />} />
             <Route path="pods" element={<AdminPods />} />
             <Route path="addons" element={<AdminAddons />} />
             <Route path="codes" element={<AdminCodes />} />
+            <Route path="restaurant-menu" element={<AdminRestaurantMenu />} />
             <Route path="content" element={<AdminContent />} />
             <Route path="gallery" element={<AdminGallery />} />
           </Route>
