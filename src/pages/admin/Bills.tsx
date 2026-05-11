@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { sendEmail } from "@/lib/send-email";
 
 type GuestCharge = Tables<"guest_charges">;
 type BusinessArea = GuestCharge["business_area"];
@@ -213,6 +214,59 @@ const AdminBills = () => {
     refresh();
   };
 
+  const emailCharge = async (charge: AdminGuestCharge) => {
+    setBusyId(charge.id);
+    try {
+      await sendEmail({
+        templateName: "guest-charge-notification",
+        recipientEmail: charge.guest_email ?? undefined,
+        idempotencyKey: `guest-charge-email-${charge.id}-${Date.now()}`,
+        templateData: {
+          chargeId: charge.id,
+          name: charge.guest_name,
+          totalKes: charge.amount_kes,
+          tillNumber: "3128049",
+          billDescription: charge.description,
+          notes: charge.notes ?? undefined,
+        },
+      });
+      toast({ title: "Bill email sent", description: `${charge.guest_name} has received the bill email.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send bill email";
+      toast({ title: "Email not sent", description: message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const emailBatch = async (batchId: string, guestName: string, guestEmail: string | null, totalKes: number, description: string) => {
+    if (!guestEmail) {
+      toast({ title: "Missing email", description: "This guest does not have an email address saved.", variant: "destructive" });
+      return;
+    }
+    setBusyId(batchId);
+    try {
+      await sendEmail({
+        templateName: "guest-charge-batch-notification",
+        recipientEmail: guestEmail,
+        idempotencyKey: `guest-charge-batch-email-${batchId}-${Date.now()}`,
+        templateData: {
+          batchId,
+          name: guestName,
+          totalKes,
+          tillNumber: "3128049",
+          billDescription: description,
+        },
+      });
+      toast({ title: "Checkout balance email sent", description: `${guestName} has received the checkout balance email.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send checkout balance email";
+      toast({ title: "Email not sent", description: message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const sendCheckoutPrompt = async (bookingId: string, guestName: string) => {
     setBusyId(bookingId);
     try {
@@ -353,6 +407,16 @@ const AdminBills = () => {
                     <Button size="sm" onClick={() => sendCheckoutPrompt(group.bookingId, group.guestName)} disabled={busyId === group.bookingId}>
                       <CreditCard size={14} className="mr-1" /> Send Checkout Balance
                     </Button>
+                    {latestBatch && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => emailBatch(latestBatch.id, group.guestName, latestBatch.guest_email ?? null, latestBatch.total_kes, latestBatch.description)}
+                        disabled={busyId === latestBatch.id}
+                      >
+                        Email Checkout Balance
+                      </Button>
+                    )}
                     {latestBatch?.payment_request_location && (
                       <Button size="sm" variant="outline" onClick={() => refreshBatch(latestBatch.id, group.guestName)} disabled={busyId === latestBatch.id}>
                         <RefreshCcw size={14} className="mr-1" /> Refresh Checkout Payment
@@ -384,6 +448,9 @@ const AdminBills = () => {
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => sendPrompt(charge)} disabled={busyId === charge.id}>
                   <CreditCard size={14} className="mr-1" /> Send M-Pesa Prompt
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => emailCharge(charge)} disabled={busyId === charge.id || !charge.guest_email}>
+                  Email Bill
                 </Button>
                 {charge.payment_request_location && (
                   <Button size="sm" variant="outline" onClick={() => refreshPayment(charge)} disabled={busyId === charge.id}>

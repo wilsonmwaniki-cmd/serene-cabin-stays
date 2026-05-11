@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import Stays from "./pages/Stays";
 import Restaurant from "./pages/Restaurant";
 import Contact from "./pages/Contact";
+import Pay from "./pages/Pay";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Book from "./pages/Book";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/stays" element={<Stays />} />
             <Route path="/restaurant" element={<Restaurant />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/pay" element={<Pay />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/book" element={<Book />} />

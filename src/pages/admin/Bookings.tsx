@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { CalendarPlus, Check, CreditCard, MessageCircle, ReceiptText, RefreshCcw, RotateCcw, X } from "lucide-react";
+import { CalendarPlus, Check, CreditCard, Mail, MessageCircle, ReceiptText, RefreshCcw, RotateCcw, X } from "lucide-react";
 
 const statusVariant = (s: string) =>
   s === "confirmed" ? "default" : s === "cancelled" ? "destructive" : "secondary";
@@ -163,6 +163,40 @@ const AdminBookings = () => {
     }
   };
 
+  const sendApprovalEmail = async (booking: AdminBooking) => {
+    setBusyId(booking.id);
+    try {
+      await sendEmail({
+        templateName: "booking-confirmation",
+        recipientEmail: booking.guest_email,
+        idempotencyKey: `booking-confirmation-manual-${booking.id}-${Date.now()}`,
+        templateData: {
+          bookingId: booking.id,
+          name: booking.guest_name,
+          podName: booking.pod_name,
+          checkIn: fmtDate(booking.check_in),
+          checkOut: fmtDate(booking.check_out),
+          adults: booking.adults,
+          children: booking.children,
+          childrenUnder12: booking.children,
+          children12Plus: booking.children_12_plus ?? 0,
+          rooms: booking.rooms,
+          subtotalKes: booking.subtotal_kes ?? booking.total_kes ?? 0,
+          discountKes: booking.discount_kes ?? 0,
+          totalKes: booking.total_kes ?? 0,
+          promoCode: booking.promo_code_text ?? undefined,
+          tillNumber: MPESA_TILL_NUMBER,
+        },
+      });
+      toast({ title: "Approval email sent", description: `${booking.guest_name} has received the confirmation email.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send approval email";
+      toast({ title: "Email not sent", description: message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const setStatus = async (b: AdminBooking, status: "pending" | "confirmed" | "cancelled") => {
     setBusyId(b.id);
     const previousBookings = qc.getQueryData<AdminBooking[]>(["admin_bookings"]) ?? [];
@@ -192,13 +226,14 @@ const AdminBookings = () => {
       if (error) throw error;
 
       // Try to send guest email — silently skip if not yet configured
-      try {
+              try {
         if (status === "confirmed" || status === "cancelled") {
           await sendEmail({
             templateName: status === "confirmed" ? "booking-confirmation" : "booking-decline",
             recipientEmail: b.guest_email,
             idempotencyKey: `booking-${status}-${b.id}`,
             templateData: {
+              bookingId: b.id,
               name: b.guest_name,
               podName: b.pod_name,
               checkIn: fmtDate(b.check_in),
@@ -297,6 +332,11 @@ const AdminBookings = () => {
                     <ReceiptText size={14} className="mr-1" /> Extra Bill
                   </Link>
                 </Button>
+                {b.status === "confirmed" && (
+                  <Button size="sm" variant="outline" onClick={() => sendApprovalEmail(b)} disabled={busyId === b.id}>
+                    <Mail size={14} className="mr-1" /> Email Approval
+                  </Button>
+                )}
                 {b.payment_request_location && (
                   <Button size="sm" variant="outline" onClick={() => refreshPaymentStatus(b)} disabled={busyId === b.id}>
                     <RefreshCcw size={14} className="mr-1" /> Refresh Payment

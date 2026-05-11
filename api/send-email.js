@@ -1,9 +1,17 @@
 import nodemailer from "nodemailer";
+import { createPaymentToken } from "./_lib/payment-links.js";
 
 const SITE_NAME = "Wild by LERA";
 const ALERT_EMAIL = "bookings@lera.co.ke";
 const CONTACT_PHONE = "+254725744695";
 const PAYMENT_TILL = "3128049";
+const buttonHtml = (href, label) => `
+  <p style="margin:24px 0;">
+    <a href="${href}" style="display:inline-block;background:#4b5f3c;color:#f8f5ed;text-decoration:none;padding:14px 22px;border-radius:2px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;">
+      ${label}
+    </a>
+  </p>
+`;
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -33,6 +41,8 @@ const renderTemplate = (templateName, data = {}) => {
   const subtotalKes = Number(data.subtotalKes ?? 0);
   const discountKes = Number(data.discountKes ?? 0);
   const totalKes = Number(data.totalKes ?? 0);
+  const payUrl = escapeHtml(data.payUrl || "");
+  const billDescription = escapeHtml(data.billDescription || data.description || "Extra bill");
   const guestSummary = `${adults} adults · ${childrenUnder12} children under 12 · ${children12Plus} guests aged 12+ · ${rooms} room(s)`;
 
   const pricingHtml = totalKes > 0
@@ -100,8 +110,37 @@ const renderTemplate = (templateName, data = {}) => {
           <p><strong>${podName}</strong><br>${checkIn} → ${checkOut}<br>${guestSummary}</p>
           ${pricingHtml}
           <p><strong>How to pay:</strong> Pay through Till Number ${tillNumber}.</p>
+          ${payUrl ? buttonHtml(payUrl, "Pay by M-Pesa") : ""}
           <p>Safaricom will send you an M-Pesa confirmation text message after payment.</p>
           <p>Check-in is from 3pm and check-out by 2pm. If anything changes, just reply to this email.</p>
+        `,
+      };
+    case "guest-charge-notification":
+      return {
+        to: data.recipientEmail,
+        subject: `A new bill from ${SITE_NAME}`,
+        html: `
+          <h2>Hello ${name},</h2>
+          <p>We have added a new bill to your stay record.</p>
+          <p><strong>Description:</strong> ${billDescription}</p>
+          <p><strong>Amount:</strong> KES ${totalKes.toLocaleString()}</p>
+          ${notes ? `<p><strong>Notes:</strong><br>${notes}</p>` : ""}
+          ${payUrl ? buttonHtml(payUrl, "Pay this bill") : ""}
+          <p>You can also pay directly via M-Pesa Till Number ${tillNumber}.</p>
+        `,
+      };
+    case "guest-charge-batch-notification":
+      return {
+        to: data.recipientEmail,
+        subject: `Your checkout balance · ${SITE_NAME}`,
+        html: `
+          <h2>Hello ${name},</h2>
+          <p>Here is your full outstanding balance for this stay.</p>
+          <p><strong>Description:</strong> ${billDescription}</p>
+          <p><strong>Total due:</strong> KES ${totalKes.toLocaleString()}</p>
+          ${notes ? `<p><strong>Notes:</strong><br>${notes}</p>` : ""}
+          ${payUrl ? buttonHtml(payUrl, "Pay stay balance") : ""}
+          <p>You can also pay directly via M-Pesa Till Number ${tillNumber}.</p>
         `,
       };
     case "booking-decline":
@@ -136,7 +175,36 @@ export default async function handler(req, res) {
   }
 
   const { templateName, recipientEmail, templateData = {} } = req.body || {};
-  const email = renderTemplate(templateName, { ...templateData, recipientEmail });
+  const siteUrl = process.env.PUBLIC_SITE_URL
+    || `${(req.headers["x-forwarded-proto"] || "https").split(",")[0]}://${req.headers.host}`;
+
+  let payUrl = "";
+  if (templateName === "booking-confirmation" && templateData.bookingId && recipientEmail) {
+    const token = createPaymentToken({
+      targetType: "booking",
+      targetId: templateData.bookingId,
+      recipientEmail,
+    });
+    payUrl = `${siteUrl}/pay?token=${encodeURIComponent(token)}`;
+  }
+  if (templateName === "guest-charge-notification" && templateData.chargeId && recipientEmail) {
+    const token = createPaymentToken({
+      targetType: "guest_charge",
+      targetId: templateData.chargeId,
+      recipientEmail,
+    });
+    payUrl = `${siteUrl}/pay?token=${encodeURIComponent(token)}`;
+  }
+  if (templateName === "guest-charge-batch-notification" && templateData.batchId && recipientEmail) {
+    const token = createPaymentToken({
+      targetType: "guest_charge_batch",
+      targetId: templateData.batchId,
+      recipientEmail,
+    });
+    payUrl = `${siteUrl}/pay?token=${encodeURIComponent(token)}`;
+  }
+
+  const email = renderTemplate(templateName, { ...templateData, recipientEmail, payUrl });
 
   if (!email?.to) {
     return res.status(400).json({ error: "Email recipient is missing" });

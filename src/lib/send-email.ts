@@ -5,7 +5,9 @@ type SendEmailPayload = {
     | "contact-received"
     | "contact-admin-alert"
     | "booking-confirmation"
-    | "booking-decline";
+    | "booking-decline"
+    | "guest-charge-notification"
+    | "guest-charge-batch-notification";
   recipientEmail?: string;
   idempotencyKey?: string;
   templateData?: Record<string, unknown>;
