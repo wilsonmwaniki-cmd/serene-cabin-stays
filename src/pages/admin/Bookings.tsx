@@ -72,6 +72,26 @@ const createWhatsAppUrl = (booking: AdminBooking) => {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
+const createApprovalWhatsAppMessage = (booking: AdminBooking, payUrl?: string | null) => [
+  `Hello ${booking.guest_name},`,
+  "",
+  "Your booking at Wild by LERA has been approved.",
+  `Pod(s): ${booking.pod_name ?? "—"}`,
+  `Dates: ${fmtDate(booking.check_in)} to ${fmtDate(booking.check_out)}`,
+  `Rooms: ${booking.rooms}`,
+  `Adults: ${booking.adults}`,
+  `Children under 12: ${booking.children}`,
+  `Guests 12+: ${booking.children_12_plus ?? 0}`,
+  `Total: KES ${(booking.total_kes ?? 0).toLocaleString()}`,
+  `How to pay: M-Pesa Till Number ${MPESA_TILL_NUMBER}`,
+  payUrl ? `Pay now: ${payUrl}` : null,
+  "",
+  "Safaricom will send you an M-Pesa confirmation SMS after payment.",
+  "Please reply here if you need any help.",
+]
+  .filter(Boolean)
+  .join("\n");
+
 const statusToastTitle = (status: AdminBooking["status"]) => {
   if (status === "confirmed") return "Booking approved";
   if (status === "cancelled") return "Booking declined";
@@ -192,6 +212,50 @@ const AdminBookings = () => {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not send approval email";
       toast({ title: "Email not sent", description: message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const sendApprovalWhatsApp = async (booking: AdminBooking) => {
+    const phone = normalizeWhatsAppPhone(booking.guest_phone);
+    if (!phone) {
+      toast({
+        title: "WhatsApp not available",
+        description: "This booking does not have a valid phone number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBusyId(booking.id);
+    try {
+      const response = await fetch("/api/create-payment-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          targetType: "booking",
+          targetId: booking.id,
+          recipientEmail: booking.guest_email,
+        }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "Could not prepare the WhatsApp approval");
+      }
+
+      const message = createApprovalWhatsAppMessage(booking, body?.payUrl);
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not prepare the WhatsApp approval";
+      toast({
+        title: "WhatsApp message not ready",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setBusyId(null);
     }
@@ -337,6 +401,11 @@ const AdminBookings = () => {
                     <Mail size={14} className="mr-1" /> Email Approval
                   </Button>
                 )}
+                {b.status === "confirmed" && (
+                  <Button size="sm" variant="outline" onClick={() => sendApprovalWhatsApp(b)} disabled={busyId === b.id}>
+                    <MessageCircle size={14} className="mr-1" /> WhatsApp Approval
+                  </Button>
+                )}
                 {b.payment_request_location && (
                   <Button size="sm" variant="outline" onClick={() => refreshPaymentStatus(b)} disabled={busyId === b.id}>
                     <RefreshCcw size={14} className="mr-1" /> Refresh Payment
@@ -424,6 +493,16 @@ const AdminBookings = () => {
                 {(selectedBooking.status === "confirmed" || selectedBooking.status === "pending") && (
                   <Button size="sm" variant="outline" onClick={() => requestPaymentPrompt(selectedBooking)} disabled={busyId === selectedBooking.id}>
                     <CreditCard size={14} className="mr-1" /> Send M-Pesa Prompt
+                  </Button>
+                )}
+                {selectedBooking.status === "confirmed" && (
+                  <Button size="sm" variant="outline" onClick={() => sendApprovalEmail(selectedBooking)} disabled={busyId === selectedBooking.id}>
+                    <Mail size={14} className="mr-1" /> Email Approval
+                  </Button>
+                )}
+                {selectedBooking.status === "confirmed" && (
+                  <Button size="sm" variant="outline" onClick={() => sendApprovalWhatsApp(selectedBooking)} disabled={busyId === selectedBooking.id}>
+                    <MessageCircle size={14} className="mr-1" /> WhatsApp Approval
                   </Button>
                 )}
                 {selectedBooking.payment_request_location && (
