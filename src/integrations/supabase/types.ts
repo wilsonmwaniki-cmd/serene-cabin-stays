@@ -248,6 +248,119 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_charges: {
+        Row: {
+          amount_kes: number
+          booking_id: string | null
+          business_area: Database["public"]["Enums"]["business_area"]
+          charge_status: string
+          created_at: string
+          description: string
+          guest_email: string | null
+          guest_name: string
+          guest_phone: string
+          id: string
+          notes: string | null
+          payment_amount_kes: number | null
+          payment_phone: string | null
+          payment_provider: string | null
+          payment_received_at: string | null
+          payment_reference: string | null
+          payment_request_id: string | null
+          payment_request_location: string | null
+          payment_requested_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_kes: number
+          booking_id?: string | null
+          business_area?: Database["public"]["Enums"]["business_area"]
+          charge_status?: string
+          created_at?: string
+          description: string
+          guest_email?: string | null
+          guest_name: string
+          guest_phone: string
+          id?: string
+          notes?: string | null
+          payment_amount_kes?: number | null
+          payment_phone?: string | null
+          payment_provider?: string | null
+          payment_received_at?: string | null
+          payment_reference?: string | null
+          payment_request_id?: string | null
+          payment_request_location?: string | null
+          payment_requested_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_kes?: number
+          booking_id?: string | null
+          business_area?: Database["public"]["Enums"]["business_area"]
+          charge_status?: string
+          created_at?: string
+          description?: string
+          guest_email?: string | null
+          guest_name?: string
+          guest_phone?: string
+          id?: string
+          notes?: string | null
+          payment_amount_kes?: number | null
+          payment_phone?: string | null
+          payment_provider?: string | null
+          payment_received_at?: string | null
+          payment_reference?: string | null
+          payment_request_id?: string | null
+          payment_request_location?: string | null
+          payment_requested_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_menu_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          price_kes: number
+          section: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          price_kes?: number
+          section?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          price_kes?: number
+          section?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       statement_imports: {
         Row: {
           business_area: Database["public"]["Enums"]["business_area"]

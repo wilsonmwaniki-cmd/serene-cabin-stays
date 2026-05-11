@@ -72,8 +72,9 @@ export const splitGuestName = (fullName = "") => {
   };
 };
 
-export const createIncomingPayment = async ({ accessToken, config, booking }) => {
-  const { firstName, lastName } = splitGuestName(booking.guest_name);
+export const createIncomingPayment = async ({ accessToken, config, target, targetType = "booking" }) => {
+  const { firstName, lastName } = splitGuestName(target.guest_name);
+  const amountKes = target.total_kes ?? target.amount_kes ?? target.payment_amount_kes;
 
   const response = await fetch(`${config.apiBaseUrl}/api/v2/incoming_payments`, {
     method: "POST",
@@ -89,17 +90,20 @@ export const createIncomingPayment = async ({ accessToken, config, booking }) =>
       subscriber: {
         first_name: firstName,
         last_name: lastName,
-        phone_number: booking.guest_phone,
-        email: booking.guest_email,
+        phone_number: target.guest_phone,
+        email: target.guest_email,
       },
       amount: {
         currency: "KES",
-        value: booking.total_kes,
+        value: amountKes,
       },
       metadata: {
-        customer_id: booking.id,
-        reference: booking.id.slice(0, 8),
-        notes: `Wild by LERA booking ${booking.id}`,
+        customer_id: target.id,
+        target_type: targetType,
+        reference: target.id.slice(0, 8),
+        notes: targetType === "guest_charge"
+          ? `Wild by LERA extra bill ${target.id}: ${target.description ?? "additional bill"}`
+          : `Wild by LERA booking ${target.id}`,
       },
       _links: {
         callback_url: config.callbackUrl,
@@ -150,6 +154,7 @@ export const extractIncomingPaymentUpdate = (payload) => {
 
   return {
     bookingId: metadata.customer_id || null,
+    targetType: metadata.target_type || "booking",
     paymentStatus:
       status === "success" ? "paid"
       : status === "failed" ? "failed"

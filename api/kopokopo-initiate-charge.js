@@ -1,4 +1,4 @@
-import { fetchBookingById, updateBookingById } from "./_lib/supabase-admin.js";
+import { fetchChargeById, updateChargeById } from "./_lib/supabase-admin.js";
 import {
   assertKopoKopoConfig,
   createIncomingPayment,
@@ -12,22 +12,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { bookingId } = req.body || {};
-    if (!bookingId) {
-      return res.status(400).json({ error: "Booking ID is required" });
+    const { chargeId } = req.body || {};
+    if (!chargeId) {
+      return res.status(400).json({ error: "Charge ID is required" });
     }
 
-    const booking = await fetchBookingById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ error: "Booking not found" });
+    const charge = await fetchChargeById(chargeId);
+    if (!charge) {
+      return res.status(404).json({ error: "Charge not found" });
     }
 
-    if (!booking.guest_phone) {
+    if (!charge.guest_phone) {
       return res.status(400).json({ error: "Guest phone number is missing" });
     }
 
-    if (!booking.total_kes || booking.total_kes <= 0) {
-      return res.status(400).json({ error: "Booking total is missing" });
+    if (!charge.amount_kes || charge.amount_kes <= 0) {
+      return res.status(400).json({ error: "Charge amount is missing" });
     }
 
     const config = getKopoKopoConfig(req);
@@ -37,15 +37,15 @@ export default async function handler(req, res) {
     const payment = await createIncomingPayment({
       accessToken,
       config,
-      target: booking,
-      targetType: "booking",
+      target: charge,
+      targetType: "guest_charge",
     });
 
-    const updated = await updateBookingById(bookingId, {
-      payment_status: "requested",
+    const updated = await updateChargeById(chargeId, {
+      charge_status: "requested",
       payment_provider: "kopokopo",
-      payment_phone: booking.guest_phone,
-      payment_amount_kes: booking.total_kes,
+      payment_phone: charge.guest_phone,
+      payment_amount_kes: charge.amount_kes,
       payment_requested_at: new Date().toISOString(),
       payment_request_location: payment.location,
       payment_request_id: payment.location ? payment.location.split("/").pop() : null,
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      booking: updated,
+      charge: updated,
       location: payment.location,
     });
   } catch (error) {

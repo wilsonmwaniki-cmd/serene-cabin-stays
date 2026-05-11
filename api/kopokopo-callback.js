@@ -1,4 +1,4 @@
-import { fetchBookingById, updateBookingById } from "./_lib/supabase-admin.js";
+import { fetchBookingById, fetchChargeById, updateBookingById, updateChargeById } from "./_lib/supabase-admin.js";
 import { extractIncomingPaymentUpdate } from "./_lib/kopokopo.js";
 
 export default async function handler(req, res) {
@@ -11,7 +11,28 @@ export default async function handler(req, res) {
     const update = extractIncomingPaymentUpdate(payload);
 
     if (!update.bookingId) {
-      return res.status(400).json({ error: "Booking reference is missing" });
+      return res.status(400).json({ error: "Payment reference is missing" });
+    }
+
+    if (update.targetType === "guest_charge") {
+      const charge = await fetchChargeById(update.bookingId);
+      if (!charge) {
+        return res.status(404).json({ error: "Charge not found" });
+      }
+
+      await updateChargeById(update.bookingId, {
+        charge_status: update.paymentStatus,
+        payment_provider: update.paymentProvider,
+        payment_phone: update.paymentPhone || charge.payment_phone || charge.guest_phone,
+        payment_amount_kes: update.paymentAmountKes ?? charge.payment_amount_kes ?? charge.amount_kes,
+        payment_reference: update.paymentReference,
+        payment_request_id: update.paymentRequestId,
+        payment_request_location: update.paymentRequestLocation,
+        payment_requested_at: update.paymentRequestedAt || charge.payment_requested_at,
+        payment_received_at: update.paymentReceivedAt,
+      });
+
+      return res.status(200).json({ success: true });
     }
 
     const booking = await fetchBookingById(update.bookingId);

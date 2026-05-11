@@ -47,3 +47,20 @@ export const updateBookingById = async (bookingId, patch) => {
 
   return Array.isArray(rows) ? rows[0] ?? null : rows;
 };
+
+export const fetchChargeById = async (chargeId) => {
+  const rows = await supabaseRequest(
+    `guest_charges?select=*&id=eq.${encodeURIComponent(chargeId)}&limit=1`,
+  );
+
+  return Array.isArray(rows) ? rows[0] ?? null : null;
+};
+
+export const updateChargeById = async (chargeId, patch) => {
+  const rows = await supabaseRequest(
+    `guest_charges?id=eq.${encodeURIComponent(chargeId)}`,
+    { method: "PATCH", body: patch },
+  );
+
+  return Array.isArray(rows) ? rows[0] ?? null : rows;
+};
