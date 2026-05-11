@@ -1,12 +1,25 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import restaurantImg from "@/assets/restaurant.jpg";
 import { Link } from "react-router-dom";
 import { useRestaurantMenu } from "@/hooks/useRestaurantMenu";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 
 const kes = (value: number) => `KES ${value.toLocaleString()}`;
 
 const Restaurant = () => {
   const { data: menuItems = [], isLoading } = useRestaurantMenu();
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [notes, setNotes] = useState("");
+  const [paymentPreference, setPaymentPreference] = useState<"bill_later" | "pay_now">("bill_later");
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const grouped = useMemo(
     () =>
@@ -17,6 +30,79 @@ const Restaurant = () => {
       }, {}),
     [menuItems],
   );
+
+  const selectedItems = menuItems
+    .map((item) => ({
+      menu_item_id: item.id,
+      quantity: quantities[item.id] ?? 0,
+      title: item.title,
+      price_kes: item.price_kes,
+    }))
+    .filter((item) => item.quantity > 0);
+
+  const orderTotal = selectedItems.reduce((sum, item) => sum + item.quantity * item.price_kes, 0);
+
+  const submitOrder = async () => {
+    if (!guestName.trim() || !guestPhone.trim()) {
+      toast({
+        title: "Missing details",
+        description: "Please enter your name and phone number before sending your meal choices.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      toast({
+        title: "No meals selected",
+        description: "Please choose at least one menu item.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/restaurant-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guest_name: guestName.trim(),
+          guest_email: guestEmail.trim(),
+          guest_phone: guestPhone.trim(),
+          notes: notes.trim(),
+          payment_preference: paymentPreference,
+          items: selectedItems.map((item) => ({
+            menu_item_id: item.menu_item_id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "Could not place your meal order");
+      }
+
+      toast({
+        title: "Meal choices received",
+        description:
+          paymentPreference === "pay_now"
+            ? body?.promptSent
+              ? "Your order has been recorded and an M-Pesa prompt has been sent."
+              : body?.promptError || "Your order was recorded, but the payment prompt was not sent."
+            : "Your order has been added to your stay bill.",
+      });
+
+      setQuantities({});
+      setNotes("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not place your meal order";
+      toast({ title: "Order not sent", description: message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -95,6 +181,96 @@ const Restaurant = () => {
                 </section>
               ))}
             </div>
+
+            {menuItems.length > 0 && (
+              <section className="mt-10 border border-dashed border-border bg-linen/50 p-6 md:p-8 space-y-6">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-ember mb-2">Meal order</p>
+                  <h3 className="font-display text-3xl text-sage-deep">Send us your food choices</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Choose your meals before arrival or while staying with us. You can pay now by M-Pesa or add the order to your stay bill.
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Your name</Label>
+                    <Input value={guestName} onChange={(e) => setGuestName(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Email</Label>
+                    <Input value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>How would you like to pay?</Label>
+                  <Select value={paymentPreference} onValueChange={(value) => setPaymentPreference(value as "bill_later" | "pay_now")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bill_later">Add this order to my stay bill</SelectItem>
+                      <SelectItem value="pay_now">Send me an M-Pesa prompt now</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Select meals and quantities</Label>
+                  <div className="space-y-3">
+                    {menuItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-4 border border-border/60 bg-bone/40 p-4">
+                        <div>
+                          <p className="font-display text-xl text-sage-deep">{item.title}</p>
+                          {item.description && <p className="text-sm text-muted-foreground mt-1">{item.description}</p>}
+                          <p className="text-sm text-foreground/80 mt-2">{kes(item.price_kes)}</p>
+                        </div>
+                        <div className="w-24">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={quantities[item.id] ?? 0}
+                            onChange={(e) =>
+                              setQuantities((current) => ({
+                                ...current,
+                                [item.id]: Math.max(0, Number(e.target.value) || 0),
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Notes or special requests</Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="Any dietary notes, serving time requests, or preferences"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-border pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {selectedItems.length} item{selectedItems.length === 1 ? "" : "s"} selected
+                    </span>
+                    <span className="font-display text-2xl text-sage-deep">{kes(orderTotal)}</span>
+                  </div>
+                  <Button onClick={submitOrder} disabled={submitting}>
+                    {submitting ? "Sending order…" : paymentPreference === "pay_now" ? "Order and Pay Now" : "Add Order to My Stay Bill"}
+                  </Button>
+                </div>
+              </section>
+            )}
           </div>
         </div>
       </section>

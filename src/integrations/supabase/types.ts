@@ -261,6 +261,7 @@ export type Database = {
           guest_phone: string
           id: string
           notes: string | null
+          payment_batch_id: string | null
           payment_amount_kes: number | null
           payment_phone: string | null
           payment_provider: string | null
@@ -269,6 +270,8 @@ export type Database = {
           payment_request_id: string | null
           payment_request_location: string | null
           payment_requested_at: string | null
+          source_kind: string
+          source_order_id: string | null
           updated_at: string
         }
         Insert: {
@@ -283,6 +286,7 @@ export type Database = {
           guest_phone: string
           id?: string
           notes?: string | null
+          payment_batch_id?: string | null
           payment_amount_kes?: number | null
           payment_phone?: string | null
           payment_provider?: string | null
@@ -291,6 +295,8 @@ export type Database = {
           payment_request_id?: string | null
           payment_request_location?: string | null
           payment_requested_at?: string | null
+          source_kind?: string
+          source_order_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -305,6 +311,7 @@ export type Database = {
           guest_phone?: string
           id?: string
           notes?: string | null
+          payment_batch_id?: string | null
           payment_amount_kes?: number | null
           payment_phone?: string | null
           payment_provider?: string | null
@@ -313,11 +320,101 @@ export type Database = {
           payment_request_id?: string | null
           payment_request_location?: string | null
           payment_requested_at?: string | null
+          source_kind?: string
+          source_order_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "guest_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_charges_payment_batch_id_fkey"
+            columns: ["payment_batch_id"]
+            isOneToOne: false
+            referencedRelation: "guest_charge_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_charges_source_order_id_fkey"
+            columns: ["source_order_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_charge_batches: {
+        Row: {
+          batch_status: string
+          booking_id: string | null
+          charge_ids: Json
+          created_at: string
+          description: string
+          guest_email: string | null
+          guest_name: string
+          guest_phone: string
+          id: string
+          payment_amount_kes: number | null
+          payment_phone: string | null
+          payment_provider: string | null
+          payment_received_at: string | null
+          payment_reference: string | null
+          payment_request_id: string | null
+          payment_request_location: string | null
+          payment_requested_at: string | null
+          total_kes: number
+          updated_at: string
+        }
+        Insert: {
+          batch_status?: string
+          booking_id?: string | null
+          charge_ids?: Json
+          created_at?: string
+          description: string
+          guest_email?: string | null
+          guest_name: string
+          guest_phone: string
+          id?: string
+          payment_amount_kes?: number | null
+          payment_phone?: string | null
+          payment_provider?: string | null
+          payment_received_at?: string | null
+          payment_reference?: string | null
+          payment_request_id?: string | null
+          payment_request_location?: string | null
+          payment_requested_at?: string | null
+          total_kes: number
+          updated_at?: string
+        }
+        Update: {
+          batch_status?: string
+          booking_id?: string | null
+          charge_ids?: Json
+          created_at?: string
+          description?: string
+          guest_email?: string | null
+          guest_name?: string
+          guest_phone?: string
+          id?: string
+          payment_amount_kes?: number | null
+          payment_phone?: string | null
+          payment_provider?: string | null
+          payment_received_at?: string | null
+          payment_reference?: string | null
+          payment_request_id?: string | null
+          payment_request_location?: string | null
+          payment_requested_at?: string | null
+          total_kes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_charge_batches_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
@@ -360,6 +457,107 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      restaurant_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_name: string
+          line_total_kes: number
+          menu_item_id: string | null
+          order_id: string
+          quantity: number
+          special_request: string | null
+          unit_price_kes: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_name: string
+          line_total_kes?: number
+          menu_item_id?: string | null
+          order_id: string
+          quantity?: number
+          special_request?: string | null
+          unit_price_kes?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_name?: string
+          line_total_kes?: number
+          menu_item_id?: string | null
+          order_id?: string
+          quantity?: number
+          special_request?: string | null
+          unit_price_kes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_order_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_orders: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          guest_email: string | null
+          guest_name: string
+          guest_phone: string
+          id: string
+          notes: string | null
+          order_status: string
+          payment_preference: string
+          total_kes: number
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_name: string
+          guest_phone: string
+          id?: string
+          notes?: string | null
+          order_status?: string
+          payment_preference?: string
+          total_kes: number
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string
+          guest_phone?: string
+          id?: string
+          notes?: string | null
+          order_status?: string
+          payment_preference?: string
+          total_kes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_orders_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       statement_imports: {
         Row: {

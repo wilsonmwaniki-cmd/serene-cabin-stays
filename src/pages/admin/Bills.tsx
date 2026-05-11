@@ -4,7 +4,7 @@ import { CreditCard, RefreshCcw, Trash2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useAdminGuestCharges } from "@/hooks/useAdminGuestCharges";
+import { useAdminChargeBatches, useAdminGuestCharges, type AdminGuestCharge } from "@/hooks/useAdminGuestCharges";
 import { useAdminBookings } from "@/hooks/useAdminBookings";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,11 +36,14 @@ const statusLabel = (value: string) =>
   : value === "cancelled" ? "Cancelled"
   : "Draft";
 
+const isCollectible = (value: string) => value === "draft" || value === "failed";
+
 const AdminBills = () => {
   const qc = useQueryClient();
   const [params] = useSearchParams();
   const bookingPrefill = params.get("booking");
   const { data: charges = [], isLoading: chargesLoading } = useAdminGuestCharges();
+  const { data: chargeBatches = [], isLoading: batchesLoading } = useAdminChargeBatches();
   const { data: bookings = [], isLoading: bookingsLoading } = useAdminBookings();
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -67,6 +70,38 @@ const AdminBills = () => {
     [bookings],
   );
 
+  const outstandingByBooking = useMemo(() => {
+    const groups = new Map<string, { bookingLabel: string; bookingId: string; guestName: string; totalKes: number; count: number }>();
+
+    for (const charge of charges) {
+      if (!charge.booking_id || !isCollectible(charge.charge_status)) continue;
+      const booking = bookings.find((item) => item.id === charge.booking_id);
+      const current = groups.get(charge.booking_id) ?? {
+        bookingId: charge.booking_id,
+        bookingLabel: booking
+          ? `${booking.guest_name} · ${booking.pod_name} · ${new Date(booking.check_in).toLocaleDateString()}`
+          : `${charge.guest_name} · Stay balance`,
+        guestName: charge.guest_name,
+        totalKes: 0,
+        count: 0,
+      };
+      current.totalKes += charge.amount_kes;
+      current.count += 1;
+      groups.set(charge.booking_id, current);
+    }
+
+    return Array.from(groups.values());
+  }, [bookings, charges]);
+
+  const latestBatchByBookingId = useMemo(() => {
+    const map = new Map<string, (typeof chargeBatches)[number]>();
+    for (const batch of chargeBatches) {
+      if (!batch.booking_id || map.has(batch.booking_id)) continue;
+      map.set(batch.booking_id, batch);
+    }
+    return map;
+  }, [chargeBatches]);
+
   useEffect(() => {
     if (!draft.booking_id) return;
     const booking = bookingOptions.find((item) => item.id === draft.booking_id);
@@ -83,6 +118,7 @@ const AdminBills = () => {
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["admin_guest_charges"] });
+    qc.invalidateQueries({ queryKey: ["admin_guest_charge_batches"] });
   };
 
   const createCharge = async () => {
@@ -177,6 +213,52 @@ const AdminBills = () => {
     refresh();
   };
 
+  const sendCheckoutPrompt = async (bookingId: string, guestName: string) => {
+    setBusyId(bookingId);
+    try {
+      const response = await fetch("/api/kopokopo-initiate-charge-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || "Could not send checkout balance prompt");
+      toast({
+        title: "Checkout payment prompt sent",
+        description: `${guestName} has been sent the full stay balance.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not send checkout balance prompt";
+      toast({ title: "Payment prompt not sent", description: message, variant: "destructive" });
+    } finally {
+      refresh();
+      setBusyId(null);
+    }
+  };
+
+  const refreshBatch = async (batchId: string, guestName: string) => {
+    setBusyId(batchId);
+    try {
+      const response = await fetch("/api/kopokopo-check-charge-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || "Could not refresh checkout payment");
+      toast({
+        title: "Checkout payment updated",
+        description: `${guestName} is now ${statusLabel(body?.batch?.batch_status ?? "requested").toLowerCase()}.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not refresh checkout payment";
+      toast({ title: "Payment check failed", description: message, variant: "destructive" });
+    } finally {
+      refresh();
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -241,7 +323,48 @@ const AdminBills = () => {
         <Button onClick={createCharge} disabled={creating}>{creating ? "Saving…" : "Save bill"}</Button>
       </section>
 
-      {(chargesLoading || bookingsLoading) && <p className="text-muted-foreground">Loading…</p>}
+      {(chargesLoading || bookingsLoading || batchesLoading) && <p className="text-muted-foreground">Loading…</p>}
+
+      {outstandingByBooking.length > 0 && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="font-display text-2xl text-sage-deep">Checkout balances</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tally unpaid bills for a stay, then push one combined M-Pesa prompt to the guest.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {outstandingByBooking.map((group) => {
+              const latestBatch = latestBatchByBookingId.get(group.bookingId);
+              return (
+                <article key={group.bookingId} className="border border-border/60 bg-bone/40 p-5 flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-display text-xl text-sage-deep">{group.bookingLabel}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {group.count} unpaid line item{group.count === 1 ? "" : "s"} · {kes(group.totalKes)}
+                    </p>
+                    {latestBatch && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Latest checkout prompt: {statusLabel(latestBatch.batch_status)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => sendCheckoutPrompt(group.bookingId, group.guestName)} disabled={busyId === group.bookingId}>
+                      <CreditCard size={14} className="mr-1" /> Send Checkout Balance
+                    </Button>
+                    {latestBatch?.payment_request_location && (
+                      <Button size="sm" variant="outline" onClick={() => refreshBatch(latestBatch.id, group.guestName)} disabled={busyId === latestBatch.id}>
+                        <RefreshCcw size={14} className="mr-1" /> Refresh Checkout Payment
+                      </Button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="space-y-4">
         {charges.map((charge) => (
@@ -252,6 +375,9 @@ const AdminBills = () => {
                   <h2 className="font-display text-xl text-sage-deep">{charge.guest_name}</h2>
                   <Badge variant={statusVariant(charge.charge_status)}>{statusLabel(charge.charge_status)}</Badge>
                   <Badge variant="outline">{areaLabel(charge.business_area)}</Badge>
+                  {"source_kind" in charge && charge.source_kind === "restaurant_order" && (
+                    <Badge variant="secondary">Restaurant order</Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">{charge.description}</p>
               </div>
@@ -276,6 +402,24 @@ const AdminBills = () => {
               <Field label="Email" value={charge.guest_email ?? "—"} />
               <Field label="Payment Ref" value={charge.payment_reference ?? "—"} />
             </div>
+            {"order_items" in charge && charge.order_items.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border/60">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Ordered items</p>
+                <ul className="space-y-2 text-sm">
+                  {charge.order_items.map((item) => (
+                    <li key={item.id} className="flex items-start justify-between gap-4">
+                      <div>
+                        <span className="text-foreground/90">{item.item_name} × {item.quantity}</span>
+                        {item.special_request && (
+                          <p className="text-xs text-muted-foreground mt-1">{item.special_request}</p>
+                        )}
+                      </div>
+                      <span className="text-foreground/90">{kes(item.line_total_kes)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {charge.notes && <p className="mt-4 text-sm text-foreground/75 italic">"{charge.notes}"</p>}
           </article>
         ))}
