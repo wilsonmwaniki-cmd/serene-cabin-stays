@@ -260,6 +260,7 @@ export type Database = {
           guest_name: string
           guest_phone: string
           id: string
+          itemized_lines: Json
           notes: string | null
           payment_batch_id: string | null
           payment_amount_kes: number | null
@@ -285,6 +286,7 @@ export type Database = {
           guest_name: string
           guest_phone: string
           id?: string
+          itemized_lines?: Json
           notes?: string | null
           payment_batch_id?: string | null
           payment_amount_kes?: number | null
@@ -310,6 +312,7 @@ export type Database = {
           guest_name?: string
           guest_phone?: string
           id?: string
+          itemized_lines?: Json
           notes?: string | null
           payment_batch_id?: string | null
           payment_amount_kes?: number | null
