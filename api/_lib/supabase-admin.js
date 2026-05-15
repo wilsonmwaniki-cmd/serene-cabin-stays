@@ -31,6 +31,28 @@ const supabaseRequest = async (path, { method = "GET", body } = {}) => {
   return response.json();
 };
 
+const supabaseRpc = async (fn, body = {}) => {
+  const { url, serviceRoleKey } = getSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Supabase RPC failed");
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+};
+
 export const fetchBookingById = async (bookingId) => {
   const rows = await supabaseRequest(
     `bookings?select=*&id=eq.${encodeURIComponent(bookingId)}&limit=1`,
@@ -186,4 +208,38 @@ export const fetchRestaurantOrderItemsByOrderIds = async (orderIds) => {
   );
 
   return Array.isArray(rows) ? rows : [];
+};
+
+export const fetchPods = async () => {
+  const rows = await supabaseRequest(
+    "pods?select=*&order=display_order.asc",
+  );
+
+  return Array.isArray(rows) ? rows : [];
+};
+
+export const fetchSiteContent = async () => {
+  const rows = await supabaseRequest(
+    "site_content?select=key,value&order=key.asc",
+  );
+
+  return Array.isArray(rows) ? rows : [];
+};
+
+export const fetchActiveRestaurantMenuItems = async () => {
+  const rows = await supabaseRequest(
+    "restaurant_menu_items?select=*&is_active=eq.true&order=section.asc,display_order.asc,title.asc",
+  );
+
+  return Array.isArray(rows) ? rows : [];
+};
+
+export const fetchPodAvailability = async ({ podId, checkIn, checkOut }) => {
+  const rows = await supabaseRpc("pod_availability", {
+    _pod_id: podId,
+    _check_in: checkIn,
+    _check_out: checkOut,
+  });
+
+  return Array.isArray(rows) ? rows[0] ?? null : null;
 };

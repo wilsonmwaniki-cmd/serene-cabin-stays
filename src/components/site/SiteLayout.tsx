@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
+import { GuestAssistant } from "./GuestAssistant";
 
 export const SiteLayout = () => {
   const location = useLocation();
@@ -17,6 +18,7 @@ export const SiteLayout = () => {
         <Outlet />
       </main>
       <SiteFooter />
+      <GuestAssistant />
     </div>
   );
 };
