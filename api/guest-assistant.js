@@ -139,7 +139,11 @@ const normalizeMessages = (messages) =>
     .slice(-12)
     .map((message) => ({
       role: message.role,
-      content: [{ type: "input_text", text: message.content }],
+      content: [
+        message.role === "assistant"
+          ? { type: "output_text", text: message.content }
+          : { type: "input_text", text: message.content },
+      ],
     }));
 
 const extractOutputText = (responseJson) => {
