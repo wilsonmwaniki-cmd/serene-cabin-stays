@@ -236,7 +236,7 @@ const AdminBookings = () => {
     }
 
     try {
-      const response = await fetch("/api/create-payment-link", {
+      const response = await fetch("/api/payment-link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

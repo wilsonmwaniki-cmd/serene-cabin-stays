@@ -13,7 +13,15 @@ import {
   getKopoKopoConfig,
   getKopoKopoToken,
 } from "./_lib/kopokopo.js";
+import { createPaymentToken } from "./_lib/payment-links.js";
 import { verifyPaymentToken } from "./_lib/payment-links.js";
+
+const fetchTarget = async (targetType, targetId) => {
+  if (targetType === "booking") return fetchBookingById(targetId);
+  if (targetType === "guest_charge") return fetchChargeById(targetId);
+  if (targetType === "guest_charge_batch") return fetchChargeBatchById(targetId);
+  return null;
+};
 
 const fetchTargetByToken = async ({ targetType, targetId }) => {
   if (targetType === "booking") {
@@ -100,7 +108,29 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-      const { token } = req.body || {};
+      const { token, targetType, targetId, recipientEmail } = req.body || {};
+
+      if (!token && targetType && targetId) {
+        const target = await fetchTarget(targetType, targetId);
+        if (!target) {
+          return res.status(404).json({ error: "Payment item not found" });
+        }
+
+        const createdToken = createPaymentToken({
+          targetType,
+          targetId,
+          recipientEmail: recipientEmail || target.guest_email || null,
+        });
+
+        const siteUrl = process.env.PUBLIC_SITE_URL
+          || `${(req.headers["x-forwarded-proto"] || "https").split(",")[0]}://${req.headers.host}`;
+
+        return res.status(200).json({
+          success: true,
+          payUrl: `${siteUrl}/pay?token=${encodeURIComponent(createdToken)}`,
+        });
+      }
+
       const payload = verifyPaymentToken(token);
       const found = await fetchTargetByToken(payload);
       if (!found) {
