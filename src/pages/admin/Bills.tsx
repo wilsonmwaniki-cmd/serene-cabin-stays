@@ -179,6 +179,14 @@ const createBillWhatsAppMessage = (charge: AdminGuestCharge, payUrl: string) => 
   return lines.join("\n");
 };
 
+const toFriendlyPaymentError = (message: string) => {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("pending request for the phone number")) {
+    return "This guest already has a pending M-Pesa prompt on their phone. Please wait for it to be completed or expire before sending another one.";
+  }
+  return message;
+};
+
 const buildBillEmailPreview = (charge: AdminGuestCharge) => {
   const subject = `A new bill from Wild by LERA`;
   const lines = [
@@ -418,7 +426,7 @@ const AdminBills = () => {
       if (!response.ok) throw new Error(body?.error || "Could not send payment prompt");
       toast({ title: "M-Pesa prompt sent", description: `${charge.guest_name} has been sent the extra bill.` });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not send payment prompt";
+      const message = toFriendlyPaymentError(error instanceof Error ? error.message : "Could not send payment prompt");
       toast({ title: "Payment prompt not sent", description: message, variant: "destructive" });
     } finally {
       refresh();
@@ -871,7 +879,12 @@ const AdminBills = () => {
                     <Pencil size={14} className="mr-1" /> Edit
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => sendPrompt(charge)} disabled={busyId === charge.id}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => sendPrompt(charge)}
+                  disabled={busyId === charge.id || charge.charge_status === "requested"}
+                >
                   <CreditCard size={14} className="mr-1" /> Send M-Pesa Prompt
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setPreviewCharge(charge)} disabled={busyId === charge.id || !charge.guest_email}>
