@@ -65,6 +65,8 @@ const BILL_ITEM_OPTIONS = [
   "Extra night",
   "Firewood",
   "Laundry",
+  "Room cleaning",
+  "Beddings change",
   "Transport",
 ];
 
