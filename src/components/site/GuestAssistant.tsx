@@ -116,23 +116,23 @@ export const GuestAssistant = () => {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full border border-sage-deep/25 bg-sage-deep px-5 py-3 text-sm uppercase tracking-[0.18em] text-bone shadow-[0_20px_45px_rgba(54,74,43,0.35),0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_rgba(126,154,111,0.28)] transition-all hover:-translate-y-0.5 hover:bg-sage hover:shadow-[0_24px_55px_rgba(54,74,43,0.42),0_0_0_1px_rgba(255,255,255,0.1),0_0_34px_rgba(126,154,111,0.34)]"
+        className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-sage-deep/25 bg-sage-deep px-4 py-3 text-xs uppercase tracking-[0.18em] text-bone shadow-[0_20px_45px_rgba(54,74,43,0.35),0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_rgba(126,154,111,0.28)] transition-all hover:-translate-y-0.5 hover:bg-sage hover:shadow-[0_24px_55px_rgba(54,74,43,0.42),0_0_0_1px_rgba(255,255,255,0.1),0_0_34px_rgba(126,154,111,0.34)] md:bottom-5 md:right-5 md:px-5 md:py-3 md:text-sm"
       >
         {open ? <X size={16} /> : <MessageCircle size={16} />}
         Ask LERA
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-5 z-50 w-[min(92vw,420px)] overflow-hidden rounded-[22px] border border-white/20 bg-bone/45 shadow-lift backdrop-blur-2xl supports-[backdrop-filter]:bg-bone/30">
+        <div className="fixed inset-x-3 bottom-20 z-50 overflow-hidden rounded-[20px] border border-white/20 bg-bone/45 shadow-lift backdrop-blur-2xl supports-[backdrop-filter]:bg-bone/30 md:inset-x-auto md:bottom-24 md:right-5 md:w-[min(92vw,420px)] md:rounded-[22px]">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/35 via-bone/8 to-transparent" />
-          <div className="relative flex items-start justify-between gap-4 border-b border-white/20 px-5 py-5">
+          <div className="relative flex items-start justify-between gap-3 border-b border-white/20 px-4 py-4 md:gap-4 md:px-5 md:py-5">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 rounded-full border border-white/20 bg-sage-deep/90 p-2 text-bone shadow-soft">
                 <Bot size={16} />
               </div>
               <div>
-                <h3 className="font-display text-xl text-sage-deep">Wild by LERA Assistant</h3>
-                <p className="text-sm text-muted-foreground">Helps guests choose dates, check availability, and move into booking.</p>
+                <h3 className="font-display text-lg text-sage-deep md:text-xl">Wild by LERA Assistant</h3>
+                <p className="text-xs text-muted-foreground md:text-sm">Helps guests choose dates, check availability, and move into booking.</p>
               </div>
             </div>
             <button type="button" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
@@ -140,13 +140,13 @@ export const GuestAssistant = () => {
             </button>
           </div>
 
-          <ScrollArea className="relative h-[420px] px-5 py-4">
+          <ScrollArea className="relative h-[46vh] max-h-[420px] min-h-[280px] px-4 py-4 md:h-[420px] md:px-5">
             <div className="space-y-3">
               {visibleMessages.map((message, index) => (
                 <div
                   key={`${message.role}-${index}`}
                   className={cn(
-                    "max-w-[88%] rounded-[18px] px-4 py-3 text-sm leading-relaxed shadow-soft",
+                    "max-w-[92%] rounded-[18px] px-4 py-3 text-sm leading-relaxed shadow-soft md:max-w-[88%]",
                     message.role === "assistant"
                       ? "border border-white/25 bg-white/45 text-foreground backdrop-blur-md"
                       : "ml-auto border border-sage-deep/20 bg-sage-deep/90 text-bone",
@@ -165,7 +165,7 @@ export const GuestAssistant = () => {
             </div>
           </ScrollArea>
 
-          <div className="relative border-t border-white/20 px-5 py-4">
+          <div className="relative border-t border-white/20 px-4 py-4 md:px-5">
             <div className="mb-3 flex flex-wrap gap-2">
               {starterPrompts.map((prompt) => (
                 <button
@@ -190,8 +190,9 @@ export const GuestAssistant = () => {
                   }
                 }}
                 placeholder="Ask about pods, dates, menu, or booking rules…"
+                className="min-w-0"
               />
-              <Button type="button" onClick={() => void sendMessage()} disabled={loading || !input.trim()}>
+              <Button type="button" onClick={() => void sendMessage()} disabled={loading || !input.trim()} className="shrink-0 px-3">
                 <Send size={14} />
               </Button>
             </div>
