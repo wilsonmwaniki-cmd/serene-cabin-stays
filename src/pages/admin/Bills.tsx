@@ -47,6 +47,13 @@ type BillDraft = {
   line_items: DraftLineItem[];
 };
 
+type PaymentDraft = {
+  charge_status: string;
+  payment_reference: string;
+  payment_received_at: string | null;
+  payment_message: string;
+};
+
 const kes = (value: number) => `KES ${value.toLocaleString()}`;
 const NONE_VALUE = "__none__";
 const CUSTOM_ITEM_VALUE = "__custom__";
@@ -214,6 +221,21 @@ const buildBillEmailPreview = (charge: AdminGuestCharge) => {
   };
 };
 
+const toFriendlyEmailError = (message: string) => {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("connection timeout")) {
+    return "The email server took too long to respond. For now, please use WhatsApp Bill or try email again later.";
+  }
+  return message;
+};
+
+const createPaymentDraft = (charge: AdminGuestCharge): PaymentDraft => ({
+  charge_status: charge.charge_status,
+  payment_reference: charge.payment_reference ?? "",
+  payment_received_at: charge.payment_received_at ? charge.payment_received_at.slice(0, 10) : null,
+  payment_message: charge.payment_message ?? "",
+});
+
 const AdminBills = () => {
   const qc = useQueryClient();
   const [params] = useSearchParams();
@@ -225,6 +247,8 @@ const AdminBills = () => {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
   const [previewCharge, setPreviewCharge] = useState<AdminGuestCharge | null>(null);
+  const [paymentEditorCharge, setPaymentEditorCharge] = useState<AdminGuestCharge | null>(null);
+  const [paymentDraft, setPaymentDraft] = useState<PaymentDraft | null>(null);
   const [draft, setDraft] = useState<BillDraft>(() => createEmptyDraft(bookingPrefill ?? ""));
 
   const bookingOptions = useMemo(
@@ -464,6 +488,53 @@ const AdminBills = () => {
     refresh();
   };
 
+  const beginPaymentUpdate = (charge: AdminGuestCharge) => {
+    setPaymentEditorCharge(charge);
+    setPaymentDraft(createPaymentDraft(charge));
+  };
+
+  const savePaymentUpdate = async () => {
+    if (!paymentEditorCharge || !paymentDraft) return;
+
+    setBusyId(paymentEditorCharge.id);
+    try {
+      const nextStatus = paymentDraft.charge_status;
+      const nextReceivedAt =
+        nextStatus === "paid"
+          ? paymentDraft.payment_received_at
+            ? `${paymentDraft.payment_received_at}T12:00:00.000Z`
+            : paymentEditorCharge.payment_received_at ?? new Date().toISOString()
+          : paymentDraft.payment_received_at
+            ? `${paymentDraft.payment_received_at}T12:00:00.000Z`
+            : null;
+
+      const { error } = await supabase
+        .from("guest_charges")
+        .update({
+          charge_status: nextStatus,
+          payment_reference: paymentDraft.payment_reference.trim() || null,
+          payment_received_at: nextReceivedAt,
+          payment_message: paymentDraft.payment_message.trim() || null,
+        })
+        .eq("id", paymentEditorCharge.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Payment details updated",
+        description: "The bill payment status and follow-up details were saved.",
+      });
+      setPaymentEditorCharge(null);
+      setPaymentDraft(null);
+      refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update payment details";
+      toast({ title: "Payment update failed", description: message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const emailCharge = async (charge: AdminGuestCharge) => {
     setBusyId(charge.id);
     try {
@@ -483,7 +554,7 @@ const AdminBills = () => {
       toast({ title: "Bill email sent", description: `${charge.guest_name} has received the bill email.` });
       setPreviewCharge(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not send bill email";
+      const message = toFriendlyEmailError(error instanceof Error ? error.message : "Could not send bill email");
       toast({ title: "Email not sent", description: message, variant: "destructive" });
     } finally {
       setBusyId(null);
@@ -564,7 +635,7 @@ const AdminBills = () => {
       });
       toast({ title: "Checkout balance email sent", description: `${guestName} has received the checkout balance email.` });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not send checkout balance email";
+      const message = toFriendlyEmailError(error instanceof Error ? error.message : "Could not send checkout balance email");
       toast({ title: "Email not sent", description: message, variant: "destructive" });
     } finally {
       setBusyId(null);
@@ -879,6 +950,9 @@ const AdminBills = () => {
                     <Pencil size={14} className="mr-1" /> Edit
                   </Button>
                 )}
+                <Button size="sm" variant="outline" onClick={() => beginPaymentUpdate(charge)} disabled={busyId === charge.id}>
+                  Update payment
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -909,6 +983,14 @@ const AdminBills = () => {
               <Field label="Phone" value={charge.guest_phone} />
               <Field label="Email" value={charge.guest_email ?? "—"} />
               <Field label="Payment Ref" value={charge.payment_reference ?? "—"} />
+            </div>
+            <div className="grid md:grid-cols-3 gap-3 text-sm mt-3">
+              <Field label="Payment status" value={statusLabel(charge.charge_status)} />
+              <Field
+                label="Paid on"
+                value={charge.payment_received_at ? formatBillItemDate(charge.payment_received_at.slice(0, 10)) : "—"}
+              />
+              <Field label="Payment message" value={charge.payment_message ? "Saved" : "—"} />
             </div>
             {charge.order_items.length > 0 && (
               <div className="mt-4 pt-4 border-t border-border/60">
@@ -946,6 +1028,14 @@ const AdminBills = () => {
                 </ul>
               </div>
             )}
+            {charge.payment_message && (
+              <div className="mt-4 pt-4 border-t border-border/60">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Saved payment message</p>
+                <pre className="whitespace-pre-wrap rounded-md bg-white/60 p-3 text-sm leading-relaxed text-foreground/85">
+                  {charge.payment_message}
+                </pre>
+              </div>
+            )}
             {charge.notes && <p className="mt-4 text-sm text-foreground/75 italic">"{charge.notes}"</p>}
           </article>
         ))}
@@ -981,6 +1071,112 @@ const AdminBills = () => {
                 <Button variant="outline" onClick={() => setPreviewCharge(null)}>Cancel</Button>
                 <Button onClick={() => void emailCharge(previewCharge)} disabled={busyId === previewCharge.id || !previewCharge.guest_email}>
                   {busyId === previewCharge.id ? "Sending…" : "Send bill email"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!paymentEditorCharge}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPaymentEditorCharge(null);
+            setPaymentDraft(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Update payment</DialogTitle>
+            <DialogDescription>
+              Edit the payment status, add the payment reference, and paste the payment message for later follow-up.
+            </DialogDescription>
+          </DialogHeader>
+          {paymentEditorCharge && paymentDraft && (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <Label>Guest</Label>
+                  <Input value={paymentEditorCharge.guest_name} readOnly />
+                </div>
+                <div>
+                  <Label>Bill amount</Label>
+                  <Input value={kes(paymentEditorCharge.amount_kes)} readOnly />
+                </div>
+                <div>
+                  <Label>Payment status</Label>
+                  <Select
+                    value={paymentDraft.charge_status}
+                    onValueChange={(value) => setPaymentDraft((current) => current ? { ...current, charge_status: value } : current)}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="requested">Payment requested</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Payment reference</Label>
+                  <Input
+                    value={paymentDraft.payment_reference}
+                    placeholder="Example: M-Pesa code"
+                    onChange={(e) => setPaymentDraft((current) => current ? { ...current, payment_reference: e.target.value } : current)}
+                  />
+                </div>
+                <div>
+                  <Label>Payment date</Label>
+                  <Popover>
+                    <PopoverTrigger className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-left text-sm ring-offset-background">
+                      <span className={paymentDraft.payment_received_at ? "text-foreground" : "text-muted-foreground"}>
+                        {formatBillItemDate(paymentDraft.payment_received_at)}
+                      </span>
+                      <CalendarIcon size={14} className="text-muted-foreground" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={paymentDraft.payment_received_at ? parseISO(paymentDraft.payment_received_at) : undefined}
+                        onSelect={(date) =>
+                          setPaymentDraft((current) =>
+                            current
+                              ? { ...current, payment_received_at: date ? format(date, "yyyy-MM-dd") : null }
+                              : current,
+                          )
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <p className="mt-1 text-xs text-muted-foreground">Shown as dd/mm/yyyy.</p>
+                </div>
+              </div>
+              <div>
+                <Label>Payment message</Label>
+                <Textarea
+                  rows={7}
+                  value={paymentDraft.payment_message}
+                  placeholder="Paste the Safaricom or M-Pesa payment message here for later follow-up."
+                  onChange={(e) => setPaymentDraft((current) => current ? { ...current, payment_message: e.target.value } : current)}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPaymentEditorCharge(null);
+                    setPaymentDraft(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={() => void savePaymentUpdate()} disabled={busyId === paymentEditorCharge.id}>
+                  {busyId === paymentEditorCharge.id ? "Saving…" : "Save payment details"}
                 </Button>
               </DialogFooter>
             </div>

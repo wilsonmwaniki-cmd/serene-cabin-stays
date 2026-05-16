@@ -110,6 +110,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_amount_kes: number | null
+          payment_message: string | null
           payment_phone: string | null
           payment_provider: string | null
           payment_received_at: string | null
@@ -142,6 +143,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_amount_kes?: number | null
+          payment_message?: string | null
           payment_phone?: string | null
           payment_provider?: string | null
           payment_received_at?: string | null
@@ -174,6 +176,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_amount_kes?: number | null
+          payment_message?: string | null
           payment_phone?: string | null
           payment_provider?: string | null
           payment_received_at?: string | null
