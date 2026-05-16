@@ -8,6 +8,7 @@ export type GuestChargeBatch = Tables<"guest_charge_batches">;
 export type GuestChargeLineItem = {
   id: string;
   label: string;
+  service_date: string | null;
   quantity: number;
   unit_amount_kes: number;
   line_total_kes: number;
@@ -36,6 +37,7 @@ const parseManualItems = (raw: unknown): GuestChargeLineItem[] => {
       return {
         id: typeof row.id === "string" ? row.id : crypto.randomUUID(),
         label,
+        service_date: typeof row.service_date === "string" && row.service_date ? row.service_date : null,
         quantity,
         unit_amount_kes: unitAmount,
         line_total_kes: Number.isFinite(lineTotal) ? lineTotal : quantity * unitAmount,

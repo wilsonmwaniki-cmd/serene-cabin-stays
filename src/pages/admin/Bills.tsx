@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CreditCard, Pencil, Plus, RefreshCcw, Trash2, X } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { Calendar as CalendarIcon, CreditCard, Pencil, Plus, RefreshCcw, Trash2, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json, Tables } from "@/integrations/supabase/types";
@@ -17,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
 import { sendEmail } from "@/lib/send-email";
 
@@ -26,6 +29,7 @@ type BusinessArea = GuestCharge["business_area"];
 type DraftLineItem = {
   id: string;
   label: string;
+  service_date: string | null;
   quantity: number;
   unit_amount_kes: number;
 };
@@ -44,7 +48,25 @@ type BillDraft = {
 
 const kes = (value: number) => `KES ${value.toLocaleString()}`;
 const NONE_VALUE = "__none__";
+const CUSTOM_ITEM_VALUE = "__custom__";
 const MPESA_TILL = "3128049";
+const BILL_ITEM_OPTIONS = [
+  "Dinner",
+  "Lunch",
+  "Breakfast",
+  "Water",
+  "Juice",
+  "Milk",
+  "Soda",
+  "Tea",
+  "Coffee",
+  "Wine",
+  "Beer",
+  "Extra night",
+  "Firewood",
+  "Laundry",
+  "Transport",
+];
 
 const areaLabel = (value: BusinessArea) =>
   value === "cabins" ? "Pods / cabins" : value === "restaurant" ? "Restaurant" : "Shared";
@@ -67,6 +89,7 @@ const isCollectible = (value: string) => value === "draft" || value === "failed"
 const createLineItem = (partial?: Partial<DraftLineItem>): DraftLineItem => ({
   id: partial?.id ?? crypto.randomUUID(),
   label: partial?.label ?? "",
+  service_date: partial?.service_date ?? null,
   quantity: partial?.quantity ?? 1,
   unit_amount_kes: partial?.unit_amount_kes ?? 0,
 });
@@ -96,6 +119,7 @@ const normalizeLineItems = (items: DraftLineItem[]): GuestChargeLineItem[] =>
       return {
         id: item.id,
         label,
+        service_date: item.service_date || null,
         quantity,
         unit_amount_kes: unitAmount,
         line_total_kes: quantity * unitAmount,
@@ -112,10 +136,20 @@ const toJsonLineItems = (items: GuestChargeLineItem[]): Json =>
   items.map((item) => ({
     id: item.id,
     label: item.label,
+    service_date: item.service_date,
     quantity: item.quantity,
     unit_amount_kes: item.unit_amount_kes,
     line_total_kes: item.line_total_kes,
   }));
+
+const formatBillItemDate = (value: string | null) => {
+  if (!value) return "Pick date";
+  try {
+    return format(parseISO(value), "dd/MM/yyyy");
+  } catch {
+    return value;
+  }
+};
 
 const AdminBills = () => {
   const qc = useQueryClient();
@@ -547,7 +581,7 @@ const AdminBills = () => {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <Label>Bill items</Label>
-              <p className="text-xs text-muted-foreground mt-1">Add meals, extra nights, laundry, transport, or any other charge as separate lines.</p>
+              <p className="text-xs text-muted-foreground mt-1">Add meals, drinks, extra nights, laundry, transport, or any other charge as separate lines.</p>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
               <Plus size={14} className="mr-1" /> Add item
@@ -557,15 +591,56 @@ const AdminBills = () => {
           <div className="space-y-3">
             {draft.line_items.map((item, index) => {
               const lineTotal = Math.max(0, Number(item.quantity || 0)) * Math.max(0, Number(item.unit_amount_kes || 0));
+              const selectedLabel = BILL_ITEM_OPTIONS.includes(item.label) ? item.label : CUSTOM_ITEM_VALUE;
               return (
-                <div key={item.id} className="grid md:grid-cols-[1.8fr_0.6fr_0.8fr_0.8fr_auto] gap-3 items-end">
+                <div key={item.id} className="grid md:grid-cols-[1.35fr_0.95fr_0.5fr_0.7fr_0.7fr_auto] gap-3 items-end">
                   <div>
                     <Label>Item {index + 1}</Label>
-                    <Input
-                      value={item.label}
-                      placeholder="Example: Dinner, Extra night, Laundry"
-                      onChange={(e) => updateLineItem(item.id, { label: e.target.value })}
-                    />
+                    <Select
+                      value={selectedLabel}
+                      onValueChange={(value) =>
+                        updateLineItem(item.id, { label: value === CUSTOM_ITEM_VALUE ? "" : value })
+                      }
+                    >
+                      <SelectTrigger><SelectValue placeholder="Choose item" /></SelectTrigger>
+                      <SelectContent>
+                        {BILL_ITEM_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option}>{option}</SelectItem>
+                        ))}
+                        <SelectItem value={CUSTOM_ITEM_VALUE}>Custom item</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {selectedLabel === CUSTOM_ITEM_VALUE && (
+                      <Input
+                        className="mt-2"
+                        value={item.label}
+                        placeholder="Type custom item"
+                        onChange={(e) => updateLineItem(item.id, { label: e.target.value })}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <Label>Date</Label>
+                    <Popover>
+                      <PopoverTrigger className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-left text-sm ring-offset-background">
+                        <span className={item.service_date ? "text-foreground" : "text-muted-foreground"}>
+                          {formatBillItemDate(item.service_date)}
+                        </span>
+                        <CalendarIcon size={14} className="text-muted-foreground" />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={item.service_date ? parseISO(item.service_date) : undefined}
+                          onSelect={(date) =>
+                            updateLineItem(item.id, {
+                              service_date: date ? format(date, "yyyy-MM-dd") : null,
+                            })
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div>
                     <Label>Qty</Label>
@@ -735,7 +810,9 @@ const AdminBills = () => {
                     <li key={item.id} className="flex items-start justify-between gap-4">
                       <div>
                         <span className="text-foreground/90">{item.label} × {item.quantity}</span>
-                        <p className="text-xs text-muted-foreground mt-1">{kes(item.unit_amount_kes)} each</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {item.service_date ? `${formatBillItemDate(item.service_date)} · ` : ""}{kes(item.unit_amount_kes)} each
+                        </p>
                       </div>
                       <span className="text-foreground/90">{kes(item.line_total_kes)}</span>
                     </li>
