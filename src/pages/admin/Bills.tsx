@@ -14,6 +14,7 @@ import {
 import { useAdminBookings } from "@/hooks/useAdminBookings";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -178,6 +179,33 @@ const createBillWhatsAppMessage = (charge: AdminGuestCharge, payUrl: string) => 
   return lines.join("\n");
 };
 
+const buildBillEmailPreview = (charge: AdminGuestCharge) => {
+  const subject = `A new bill from Wild by LERA`;
+  const lines = [
+    `Hello ${charge.guest_name},`,
+    "",
+    "We have added a new bill to your stay record.",
+    "",
+    `Description: ${charge.description}`,
+    `Amount: ${kes(charge.amount_kes)}`,
+  ];
+
+  if (charge.notes) {
+    lines.push("", "Notes:", charge.notes);
+  }
+
+  lines.push(
+    "",
+    "The email will include a 'Pay this bill' button.",
+    `You can also pay directly via M-Pesa Till Number ${MPESA_TILL}.`,
+  );
+
+  return {
+    subject,
+    body: lines.join("\n"),
+  };
+};
+
 const AdminBills = () => {
   const qc = useQueryClient();
   const [params] = useSearchParams();
@@ -188,6 +216,7 @@ const AdminBills = () => {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
+  const [previewCharge, setPreviewCharge] = useState<AdminGuestCharge | null>(null);
   const [draft, setDraft] = useState<BillDraft>(() => createEmptyDraft(bookingPrefill ?? ""));
 
   const bookingOptions = useMemo(
@@ -444,6 +473,7 @@ const AdminBills = () => {
         },
       });
       toast({ title: "Bill email sent", description: `${charge.guest_name} has received the bill email.` });
+      setPreviewCharge(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not send bill email";
       toast({ title: "Email not sent", description: message, variant: "destructive" });
@@ -844,7 +874,7 @@ const AdminBills = () => {
                 <Button size="sm" variant="outline" onClick={() => sendPrompt(charge)} disabled={busyId === charge.id}>
                   <CreditCard size={14} className="mr-1" /> Send M-Pesa Prompt
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => emailCharge(charge)} disabled={busyId === charge.id || !charge.guest_email}>
+                <Button size="sm" variant="outline" onClick={() => setPreviewCharge(charge)} disabled={busyId === charge.id || !charge.guest_email}>
                   Email Bill
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => sendBillWhatsApp(charge)} disabled={busyId === charge.id}>
@@ -907,6 +937,43 @@ const AdminBills = () => {
           </article>
         ))}
       </div>
+
+      <Dialog open={!!previewCharge} onOpenChange={(open) => !open && setPreviewCharge(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Email bill preview</DialogTitle>
+            <DialogDescription>
+              Review the message before sending it to the guest.
+            </DialogDescription>
+          </DialogHeader>
+          {previewCharge && (
+            <div className="space-y-4">
+              <div className="grid gap-3 rounded-md border border-border/70 bg-bone/40 p-4 text-sm">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">To</div>
+                  <div>{previewCharge.guest_email || "No email address"}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Subject</div>
+                  <div>{buildBillEmailPreview(previewCharge).subject}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Message</div>
+                  <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
+                    {buildBillEmailPreview(previewCharge).body}
+                  </pre>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPreviewCharge(null)}>Cancel</Button>
+                <Button onClick={() => void emailCharge(previewCharge)} disabled={busyId === previewCharge.id || !previewCharge.guest_email}>
+                  {busyId === previewCharge.id ? "Sending…" : "Send bill email"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
