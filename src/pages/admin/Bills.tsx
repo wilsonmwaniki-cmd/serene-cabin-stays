@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { Calendar as CalendarIcon, CreditCard, Pencil, Plus, RefreshCcw, Trash2, X } from "lucide-react";
+import { Calendar as CalendarIcon, CreditCard, MessageCircle, Pencil, Plus, RefreshCcw, Trash2, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json, Tables } from "@/integrations/supabase/types";
@@ -151,6 +151,31 @@ const formatBillItemDate = (value: string | null) => {
   } catch {
     return value;
   }
+};
+
+const normalizeWhatsAppPhone = (value: string | null | undefined) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("254")) return digits;
+  if (digits.startsWith("0")) return `254${digits.slice(1)}`;
+  if (digits.startsWith("7") || digits.startsWith("1")) return `254${digits}`;
+  return digits;
+};
+
+const createBillWhatsAppMessage = (charge: AdminGuestCharge, payUrl: string) => {
+  const lines = [
+    `Hello ${charge.guest_name},`,
+    "",
+    `Here is your Wild by LERA bill for ${kes(charge.amount_kes)}.`,
+    `Bill: ${charge.description}`,
+    "",
+    "Please use this payment link to pay:",
+    payUrl,
+    "",
+    `You can also pay by M-Pesa Till Number ${MPESA_TILL}.`,
+  ];
+
+  return lines.join("\n");
 };
 
 const AdminBills = () => {
@@ -422,6 +447,59 @@ const AdminBills = () => {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not send bill email";
       toast({ title: "Email not sent", description: message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const sendBillWhatsApp = async (charge: AdminGuestCharge) => {
+    const phone = normalizeWhatsAppPhone(charge.guest_phone);
+    if (!phone) {
+      toast({
+        title: "WhatsApp not available",
+        description: "This bill does not have a valid phone number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBusyId(charge.id);
+    const popup = window.open("", "_blank");
+
+    if (popup) {
+      popup.document.write("<p style=\"font-family: sans-serif; padding: 24px;\">Preparing WhatsApp bill…</p>");
+    }
+
+    try {
+      const response = await fetch("/api/payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: "guest_charge",
+          targetId: charge.id,
+          recipientEmail: charge.guest_email,
+        }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || "Could not prepare the WhatsApp bill");
+
+      const message = createBillWhatsAppMessage(charge, body?.payUrl);
+      const targetUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+      if (popup) {
+        popup.location.href = targetUrl;
+      } else {
+        window.location.href = targetUrl;
+      }
+    } catch (error) {
+      if (popup) popup.close();
+      const message = error instanceof Error ? error.message : "Could not prepare the WhatsApp bill";
+      toast({
+        title: "WhatsApp message not ready",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setBusyId(null);
     }
@@ -768,6 +846,9 @@ const AdminBills = () => {
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => emailCharge(charge)} disabled={busyId === charge.id || !charge.guest_email}>
                   Email Bill
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => sendBillWhatsApp(charge)} disabled={busyId === charge.id}>
+                  <MessageCircle size={14} className="mr-1" /> WhatsApp Bill
                 </Button>
                 {charge.payment_request_location && (
                   <Button size="sm" variant="outline" onClick={() => refreshPayment(charge)} disabled={busyId === charge.id}>
