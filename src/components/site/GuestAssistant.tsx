@@ -116,7 +116,7 @@ export const GuestAssistant = () => {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full border border-white/25 bg-bone/35 px-5 py-3 text-sm uppercase tracking-[0.18em] text-sage-deep shadow-lift backdrop-blur-xl transition-all hover:bg-bone/50 supports-[backdrop-filter]:bg-bone/25"
+        className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full border border-sage-deep/25 bg-sage-deep px-5 py-3 text-sm uppercase tracking-[0.18em] text-bone shadow-[0_20px_45px_rgba(54,74,43,0.35),0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_rgba(126,154,111,0.28)] transition-all hover:-translate-y-0.5 hover:bg-sage hover:shadow-[0_24px_55px_rgba(54,74,43,0.42),0_0_0_1px_rgba(255,255,255,0.1),0_0_34px_rgba(126,154,111,0.34)]"
       >
         {open ? <X size={16} /> : <MessageCircle size={16} />}
         Ask LERA
