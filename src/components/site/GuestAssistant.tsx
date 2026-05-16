@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Bot, Loader2, MessageCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,8 +61,17 @@ export const GuestAssistant = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: starterMessage },
   ]);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
   const visibleMessages = useMemo(() => messages.slice(-14), [messages]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = window.requestAnimationFrame(() => {
+      endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [messages, loading, open]);
 
   const sendMessage = async (rawText?: string) => {
     const text = (rawText ?? input).trim();
@@ -116,14 +125,17 @@ export const GuestAssistant = () => {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-sage-deep/25 bg-sage-deep px-4 py-3 text-xs uppercase tracking-[0.18em] text-bone shadow-[0_20px_45px_rgba(54,74,43,0.35),0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_rgba(126,154,111,0.28)] transition-all hover:-translate-y-0.5 hover:bg-sage hover:shadow-[0_24px_55px_rgba(54,74,43,0.42),0_0_0_1px_rgba(255,255,255,0.1),0_0_34px_rgba(126,154,111,0.34)] md:bottom-5 md:right-5 md:px-5 md:py-3 md:text-sm"
+        className={cn(
+          "fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-sage-deep/25 bg-sage-deep px-4 py-3 text-xs uppercase tracking-[0.18em] text-bone shadow-[0_20px_45px_rgba(54,74,43,0.35),0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_rgba(126,154,111,0.28)] transition-all hover:-translate-y-0.5 hover:bg-sage hover:shadow-[0_24px_55px_rgba(54,74,43,0.42),0_0_0_1px_rgba(255,255,255,0.1),0_0_34px_rgba(126,154,111,0.34)] md:bottom-5 md:right-5 md:px-5 md:py-3 md:text-sm",
+          open && "opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto",
+        )}
       >
         {open ? <X size={16} /> : <MessageCircle size={16} />}
         Ask LERA
       </button>
 
       {open && (
-        <div className="fixed inset-x-3 bottom-20 z-50 overflow-hidden rounded-[20px] border border-white/20 bg-bone/45 shadow-lift backdrop-blur-2xl supports-[backdrop-filter]:bg-bone/30 md:inset-x-auto md:bottom-24 md:right-5 md:w-[min(92vw,420px)] md:rounded-[22px]">
+        <div className="fixed inset-x-2 top-3 bottom-3 z-50 flex flex-col overflow-hidden rounded-[20px] border border-white/20 bg-bone/45 shadow-lift backdrop-blur-2xl supports-[backdrop-filter]:bg-bone/30 md:inset-x-auto md:top-auto md:bottom-24 md:right-5 md:h-auto md:w-[min(92vw,420px)] md:rounded-[22px]">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/35 via-bone/8 to-transparent" />
           <div className="relative flex items-start justify-between gap-3 border-b border-white/20 px-4 py-4 md:gap-4 md:px-5 md:py-5">
             <div className="flex items-start gap-3">
@@ -140,7 +152,7 @@ export const GuestAssistant = () => {
             </button>
           </div>
 
-          <ScrollArea className="relative h-[46vh] max-h-[420px] min-h-[280px] px-4 py-4 md:h-[420px] md:px-5">
+          <ScrollArea className="relative min-h-0 flex-1 px-4 py-4 md:h-[420px] md:flex-none md:px-5">
             <div className="space-y-3">
               {visibleMessages.map((message, index) => (
                 <div
@@ -162,11 +174,12 @@ export const GuestAssistant = () => {
                   Thinking…
                 </div>
               )}
+              <div ref={endRef} />
             </div>
           </ScrollArea>
 
-          <div className="relative border-t border-white/20 px-4 py-4 md:px-5">
-            <div className="mb-3 flex flex-wrap gap-2">
+          <div className="relative border-t border-white/20 px-4 pb-4 pt-3 md:px-5">
+            <div className="mb-3 flex max-h-28 flex-wrap gap-2 overflow-y-auto md:max-h-none">
               {starterPrompts.map((prompt) => (
                 <button
                   key={prompt}
@@ -190,7 +203,7 @@ export const GuestAssistant = () => {
                   }
                 }}
                 placeholder="Ask about pods, dates, menu, or booking rules…"
-                className="min-w-0"
+                className="min-w-0 text-base"
               />
               <Button type="button" onClick={() => void sendMessage()} disabled={loading || !input.trim()} className="shrink-0 px-3">
                 <Send size={14} />
