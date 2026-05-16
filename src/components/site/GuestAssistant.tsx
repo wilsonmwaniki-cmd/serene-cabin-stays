@@ -11,13 +11,13 @@ type ChatMessage = {
   content: string;
 };
 
-const starterMessage = `Hello, I’m the Wild by LERA booking assistant. I can help with pods, prices, stay rules, menu questions, availability checks, and direct booking links.`;
+const starterMessage = `Hello, I’m the Wild by LERA booking assistant. I can help you make a booking step by step. To start, what check-in and check-out dates are you interested in?`;
 
 const starterPrompts = [
-  "What is the difference between Pod 1 and Pod 2?",
-  "What are your booking rules?",
-  "Can you help me choose the right stay?",
-  "Show me the restaurant menu options.",
+  "I want to make a booking.",
+  "Check availability for my dates.",
+  "Help me choose between Pod 1 and Pod 2.",
+  "Show me the restaurant menu.",
 ];
 
 const renderLinkedText = (text: string) => {
@@ -131,7 +131,7 @@ export const GuestAssistant = () => {
               </div>
               <div>
                 <h3 className="font-display text-xl text-sage-deep">Wild by LERA Assistant</h3>
-                <p className="text-sm text-muted-foreground">Help with stays, menu, pricing, and booking links.</p>
+                <p className="text-sm text-muted-foreground">Helps guests choose dates, check availability, and move into booking.</p>
               </div>
             </div>
             <button type="button" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
