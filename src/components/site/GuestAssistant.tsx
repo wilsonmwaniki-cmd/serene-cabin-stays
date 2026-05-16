@@ -116,17 +116,18 @@ export const GuestAssistant = () => {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full bg-sage-deep px-5 py-3 text-sm uppercase tracking-[0.18em] text-bone shadow-lift transition-colors hover:bg-sage"
+        className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full border border-white/25 bg-bone/35 px-5 py-3 text-sm uppercase tracking-[0.18em] text-sage-deep shadow-lift backdrop-blur-xl transition-all hover:bg-bone/50 supports-[backdrop-filter]:bg-bone/25"
       >
         {open ? <X size={16} /> : <MessageCircle size={16} />}
         Ask LERA
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-5 z-50 w-[min(92vw,420px)] overflow-hidden rounded-sm border border-border bg-bone shadow-lift">
-          <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-linen/80 px-4 py-4">
+        <div className="fixed bottom-24 right-5 z-50 w-[min(92vw,420px)] overflow-hidden rounded-[22px] border border-white/20 bg-bone/45 shadow-lift backdrop-blur-2xl supports-[backdrop-filter]:bg-bone/30">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/35 via-bone/8 to-transparent" />
+          <div className="relative flex items-start justify-between gap-4 border-b border-white/20 px-5 py-5">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-full bg-sage-deep p-2 text-bone">
+              <div className="mt-0.5 rounded-full border border-white/20 bg-sage-deep/90 p-2 text-bone shadow-soft">
                 <Bot size={16} />
               </div>
               <div>
@@ -139,16 +140,16 @@ export const GuestAssistant = () => {
             </button>
           </div>
 
-          <ScrollArea className="h-[420px] px-4 py-4">
+          <ScrollArea className="relative h-[420px] px-5 py-4">
             <div className="space-y-3">
               {visibleMessages.map((message, index) => (
                 <div
                   key={`${message.role}-${index}`}
                   className={cn(
-                    "max-w-[88%] rounded-sm px-4 py-3 text-sm leading-relaxed",
+                    "max-w-[88%] rounded-[18px] px-4 py-3 text-sm leading-relaxed shadow-soft",
                     message.role === "assistant"
-                      ? "bg-linen text-foreground"
-                      : "ml-auto bg-sage-deep text-bone",
+                      ? "border border-white/25 bg-white/45 text-foreground backdrop-blur-md"
+                      : "ml-auto border border-sage-deep/20 bg-sage-deep/90 text-bone",
                   )}
                 >
                   {renderLinkedText(message.content)}
@@ -156,7 +157,7 @@ export const GuestAssistant = () => {
               ))}
 
               {loading && (
-                <div className="inline-flex items-center gap-2 rounded-sm bg-linen px-4 py-3 text-sm text-muted-foreground">
+                <div className="inline-flex items-center gap-2 rounded-[18px] border border-white/25 bg-white/45 px-4 py-3 text-sm text-muted-foreground shadow-soft backdrop-blur-md">
                   <Loader2 size={14} className="animate-spin" />
                   Thinking…
                 </div>
@@ -164,14 +165,14 @@ export const GuestAssistant = () => {
             </div>
           </ScrollArea>
 
-          <div className="border-t border-border/70 px-4 py-3">
+          <div className="relative border-t border-white/20 px-5 py-4">
             <div className="mb-3 flex flex-wrap gap-2">
               {starterPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => void sendMessage(prompt)}
-                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground/80 transition-colors hover:bg-linen"
+                  className="rounded-full border border-white/30 bg-white/35 px-3 py-1.5 text-xs text-foreground/80 backdrop-blur-md transition-colors hover:bg-white/50"
                 >
                   {prompt}
                 </button>
