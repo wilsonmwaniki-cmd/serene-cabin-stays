@@ -98,14 +98,52 @@ const statusToastTitle = (status: AdminBooking["status"]) => {
   return "Booking moved back to pending";
 };
 
+const paymentStatusRank = (status: AdminBooking["payment_status"]) => {
+  if (status === "paid") return 0;
+  if (status === "requested") return 1;
+  if (status === "failed") return 2;
+  if (status === "refunded") return 3;
+  return 4;
+};
+
+type SortOption =
+  | "check_in_asc"
+  | "check_in_desc"
+  | "created_at_desc"
+  | "created_at_asc"
+  | "payment_status"
+  | "guest_name";
+
 const AdminBookings = () => {
   const { data: bookings = [], isLoading } = useAdminBookings();
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("pending");
+  const [sortBy, setSortBy] = useState<SortOption>("check_in_asc");
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
-  const filtered = bookings.filter((b) => filter === "all" || b.status === filter);
+  const filtered = bookings
+    .filter((b) => filter === "all" || b.status === filter)
+    .sort((a, b) => {
+      if (sortBy === "check_in_asc") {
+        return new Date(a.check_in).getTime() - new Date(b.check_in).getTime();
+      }
+      if (sortBy === "check_in_desc") {
+        return new Date(b.check_in).getTime() - new Date(a.check_in).getTime();
+      }
+      if (sortBy === "created_at_desc") {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (sortBy === "created_at_asc") {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      if (sortBy === "payment_status") {
+        const rankDiff = paymentStatusRank(a.payment_status) - paymentStatusRank(b.payment_status);
+        if (rankDiff !== 0) return rankDiff;
+        return new Date(a.check_in).getTime() - new Date(b.check_in).getTime();
+      }
+      return a.guest_name.localeCompare(b.guest_name);
+    });
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
 
   const requestPaymentPrompt = async (booking: AdminBooking, options?: { silentConfigFailure?: boolean }) => {
@@ -356,12 +394,24 @@ const AdminBookings = () => {
           <p className="text-xs uppercase tracking-[0.3em] text-ember mb-2">Reservations</p>
           <h1 className="font-display text-3xl md:text-4xl text-sage-deep">Bookings</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(["pending", "confirmed", "cancelled", "all"] as const).map((f) => (
             <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" onClick={() => setFilter(f)} className="capitalize">
               {f}
             </Button>
           ))}
+          <select
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as SortOption)}
+          >
+            <option value="check_in_asc">Sort: Check-in earliest</option>
+            <option value="check_in_desc">Sort: Check-in latest</option>
+            <option value="created_at_desc">Sort: Newest request</option>
+            <option value="created_at_asc">Sort: Oldest request</option>
+            <option value="payment_status">Sort: Payment status</option>
+            <option value="guest_name">Sort: Guest name</option>
+          </select>
         </div>
       </div>
 
