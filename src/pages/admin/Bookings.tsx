@@ -114,16 +114,30 @@ type SortOption =
   | "payment_status"
   | "guest_name";
 
+const startOfToday = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
 const AdminBookings = () => {
   const { data: bookings = [], isLoading } = useAdminBookings();
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("pending");
+  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled" | "upcoming">("pending");
   const [sortBy, setSortBy] = useState<SortOption>("check_in_asc");
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
+  const today = startOfToday();
+
   const filtered = bookings
-    .filter((b) => filter === "all" || b.status === filter)
+    .filter((b) => {
+      if (filter === "all") return true;
+      if (filter === "upcoming") {
+        return new Date(b.check_in).getTime() >= today.getTime() && b.status !== "cancelled";
+      }
+      return b.status === filter;
+    })
     .sort((a, b) => {
       if (sortBy === "check_in_asc") {
         return new Date(a.check_in).getTime() - new Date(b.check_in).getTime();
@@ -144,6 +158,12 @@ const AdminBookings = () => {
       }
       return a.guest_name.localeCompare(b.guest_name);
     });
+
+  const upcomingPreview = bookings
+    .filter((booking) => new Date(booking.check_in).getTime() >= today.getTime() && booking.status !== "cancelled")
+    .sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime())
+    .slice(0, 5);
+
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId) ?? null;
 
   const requestPaymentPrompt = async (booking: AdminBooking, options?: { silentConfigFailure?: boolean }) => {
@@ -395,7 +415,7 @@ const AdminBookings = () => {
           <h1 className="font-display text-3xl md:text-4xl text-sage-deep">Bookings</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {(["pending", "confirmed", "cancelled", "all"] as const).map((f) => (
+          {(["pending", "upcoming", "confirmed", "cancelled", "all"] as const).map((f) => (
             <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" onClick={() => setFilter(f)} className="capitalize">
               {f}
             </Button>
@@ -414,6 +434,40 @@ const AdminBookings = () => {
           </select>
         </div>
       </div>
+
+      {!isLoading && upcomingPreview.length > 0 && (
+        <section className="mb-6 rounded-lg border border-border/60 bg-bone/30 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl text-sage-deep">Upcoming arrivals</h2>
+              <p className="text-sm text-muted-foreground">The next stays coming up from today onward.</p>
+            </div>
+            <Button size="sm" variant={filter === "upcoming" ? "default" : "outline"} onClick={() => setFilter("upcoming")}>
+              Show upcoming
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {upcomingPreview.map((booking) => (
+              <button
+                key={`upcoming-${booking.id}`}
+                type="button"
+                className="rounded-md border border-border/60 bg-white/60 p-4 text-left transition-colors hover:bg-white"
+                onClick={() => setSelectedBookingId(booking.id)}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-sage-deep">{booking.guest_name}</div>
+                  <Badge variant={statusVariant(booking.status)}>{booking.status}</Badge>
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  <div>{booking.pod_name}</div>
+                  <div>{fmtDate(booking.check_in)} → {fmtDate(booking.check_out)}</div>
+                  <div>{booking.rooms} room(s) · {(booking.adults + booking.children + (booking.children_12_plus ?? 0))} guests</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {isLoading && <p className="text-muted-foreground">Loading…</p>}
       {!isLoading && filtered.length === 0 && <p className="text-muted-foreground">No {filter === "all" ? "" : filter} bookings.</p>}
